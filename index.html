@@ -248,6 +248,8 @@ table.t tr:hover td{background:#fafaf7}
   <button class="active" data-view="schedule" onclick="switchView('schedule')">Programação</button>
   <button data-view="people" onclick="switchView('people')">Pessoas</button>
   <button data-view="escala" onclick="switchView('escala')">Escala</button>
+  <button data-view="mecanicas" onclick="switchView('mecanicas')">Mecânicas</button>
+  <button data-view="limpeza" onclick="switchView('limpeza')">Limpeza</button>
   <button data-view="settings" onclick="switchView('settings')">Configurações</button>
 </nav>
 
@@ -302,6 +304,34 @@ table.t tr:hover td{background:#fafaf7}
     </div>
   </div>
   <div id="escala-container"></div>
+</section>
+
+<!-- ══ MECÂNICAS ══ -->
+<section class="view" id="view-mecanicas">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
+    <h2 style="font-family:'Fraunces',serif;font-weight:500;font-size:22px">Mecânicas</h2>
+    <button class="btn sm" onclick="sugerirMecanicas()" style="background:var(--servant);border-color:var(--servant)">✨ Sugerir designações</button>
+  </div>
+  <div id="mecanicas-container"></div>
+</section>
+
+<!-- ══ LIMPEZA ══ -->
+<section class="view" id="view-limpeza">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
+    <h2 style="font-family:'Fraunces',serif;font-weight:500;font-size:22px">Limpeza</h2>
+    <button class="btn sm" onclick="autoRotateLimpeza()">🔄 Rotacionar grupos</button>
+  </div>
+  <!-- Gerenciar grupos -->
+  <div class="settings-card" style="margin-bottom:20px">
+    <h3 style="font-family:'Fraunces',serif;font-weight:500;font-size:16px;margin-bottom:12px">Grupos de limpeza</h3>
+    <div id="grupos-list" style="margin-bottom:12px"></div>
+    <div style="display:grid;grid-template-columns:1fr auto;gap:8px">
+      <input type="text" id="grupo-nome" placeholder="Nome do grupo (ex: Grupo A)">
+      <button class="btn" onclick="addGrupo()">+ Adicionar</button>
+    </div>
+  </div>
+  <!-- Escala semanal -->
+  <div id="limpeza-container"></div>
 </section>
 
 <!-- ══ SETTINGS ══ -->
@@ -638,6 +668,9 @@ function loadState(){
     s.people = s.people.map(p=>({unavail:[],restrict:[],...p}));
     if(!s.startTime) s.startTime='19:00';
     if(!s.events) s.events=[];
+    if(!s.mecanicas) s.mecanicas = emptyMecanicas();
+    if(!s.grupos) s.grupos=[];
+    if(!s.limpeza) s.limpeza = Array(5).fill(null).map(()=>({grupo:null}));
     return s;
   } catch(e){ return {congregacao:'',startTime:'19:00',people:seedPeople(),weeks:[emptyWeek(),emptyWeek(),emptyWeek(),emptyWeek(),emptyWeek()]}; }
 }
@@ -761,7 +794,9 @@ function switchView(name){
     document.getElementById('cfg-start').value=state.startTime||'19:00';
     renderEventsList();
   }
-  if(name==='escala') renderEscala();
+  if(name==='escala')    renderEscala();
+  if(name==='mecanicas') renderMecanicas();
+  if(name==='limpeza')   renderLimpeza();
 }
 function toggleTheme(){
   const isDark = document.documentElement.getAttribute('data-theme')==='dark';
@@ -2016,6 +2051,320 @@ function getEventForWeek(year, month, dayStart){
   return events.find(ev=>ev.date===monday)||null;
 }
 
+
+
+/* ════════════════════════════════════════
+   MECÂNICAS
+════════════════════════════════════════ */
+
+const MECANICA_FUNCOES = [
+  {key:'audio',     label:'Áudio',      elig:'allMen'},
+  {key:'video',     label:'Vídeo',      elig:'allMen'},
+  {key:'microfone', label:'Microfone',  elig:'allMen'},
+  {key:'palco',     label:'Palco',      elig:'allMen'},
+  {key:'indicador', label:'Indicador',  elig:'allMen'},
+];
+
+const REUNIOES = [
+  {key:'mds', label:'Meio de Semana'},
+  {key:'fds', label:'Fim de Semana'},
+];
+
+function emptyMecanicas(){
+  const m = {};
+  for(let n=0; n<5; n++){
+    m[n] = {};
+    for(const r of REUNIOES){
+      m[n][r.key] = {};
+      for(const f of MECANICA_FUNCOES){
+        m[n][r.key][f.key] = null;
+      }
+    }
+  }
+  return m;
+}
+
+function eligibleMecanica(){
+  // Todos os homens batizados
+  return state.people.filter(p=>p.role!=='female');
+}
+
+function renderMecanicas(){
+  const container = document.getElementById('mecanicas-container');
+  if(!container) return;
+  if(!state.mecanicas) state.mecanicas = emptyMecanicas();
+
+  const weeks = state.weeks;
+  let html = '';
+
+  for(let n=0; n<5; n++){
+    const w = weeks[n];
+    const dataLabel = w.DATA || `Semana ${n+1}`;
+    if(w._eventoTipo==='cancel'){
+      html += `<div style="background:var(--surface);border:1px solid var(--line);padding:16px;margin-bottom:12px;opacity:.5">
+        <strong style="font-size:13px">${esc(dataLabel)}</strong>
+        <span style="color:var(--muted);font-size:12px;margin-left:10px">— ${esc(w._evento||'Evento')}</span>
+      </div>`;
+      continue;
+    }
+
+    html += `<div style="background:var(--surface);border:1px solid var(--line);padding:20px;margin-bottom:12px">
+      <div style="font-family:'Fraunces',serif;font-weight:500;font-size:15px;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--line)">${esc(dataLabel)}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">`;
+
+    for(const r of REUNIOES){
+      html += `<div>
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);font-weight:600;margin-bottom:8px">${r.label}</div>`;
+      for(const f of MECANICA_FUNCOES){
+        const val = state.mecanicas[n]?.[r.key]?.[f.key]||null;
+        const person = val ? state.people.find(p=>p.id===val) : null;
+        html += `<div style="display:grid;grid-template-columns:90px 1fr;gap:8px;margin-bottom:6px;align-items:center">
+          <span style="font-size:12px;color:var(--ink2)">${f.label}</span>
+          ${renderMecPicker(n, r.key, f.key, val)}
+        </div>`;
+      }
+      html += `</div>`;
+    }
+    html += `</div></div>`;
+  }
+
+  container.innerHTML = html || '<p style="color:var(--muted)">Importe a apostila para ver as semanas.</p>';
+}
+
+function renderMecPicker(weekIdx, reuniao, funcao, currentId){
+  const id = `mec-${weekIdx}-${reuniao}-${funcao}`;
+  const person = currentId ? state.people.find(p=>p.id===currentId) : null;
+  const label = person ? person.name : 'Selecionar...';
+  const cls = person ? '' : 'empty';
+  const badge = person ? `<span class="tag ${ROLES[person.role].cls}" style="margin-right:4px">${ROLES[person.role].short}</span>` : '';
+  return `<div class="picker" id="${id}">
+    <button type="button" class="picker-trigger ${cls}"
+      onclick="toggleMecPicker('${id}',${weekIdx},'${reuniao}','${funcao}')">
+      <span>${badge}${esc(label)}</span>
+    </button>
+    <div class="picker-dropdown"></div>
+  </div>`;
+}
+
+function toggleMecPicker(id, weekIdx, reuniao, funcao){
+  const el = document.getElementById(id);
+  const wasOpen = el.classList.contains('open');
+  document.querySelectorAll('.picker.open').forEach(p=>p.classList.remove('open'));
+  if(wasOpen) return;
+  el.classList.add('open');
+  fillMecPicker(el, weekIdx, reuniao, funcao);
+}
+
+function fillMecPicker(pickerEl, weekIdx, reuniao, funcao){
+  const pool = eligibleMecanica();
+  pool.sort((a,b)=>{
+    const ca = countMecMonth(a.id), cb = countMecMonth(b.id);
+    if(ca!==cb) return ca-cb;
+    return a.name.localeCompare(b.name,'pt-BR');
+  });
+
+  const currentId = state.mecanicas[weekIdx]?.[reuniao]?.[funcao]||null;
+  const groups = {elder:[],servant:[],publisher:[]};
+  for(const p of pool){
+    const g = p.role==='elder'?'elder':p.role==='servant'?'servant':'publisher';
+    groups[g].push(p);
+  }
+
+  let html = `<div class="picker-search"><input type="text" placeholder="Buscar..." oninput="filterPicker(this,'${pickerEl.id}')"></div>`;
+  const order = [['elder','Anciãos'],['servant','Servos'],['publisher','Publicadores']];
+  for(const [role,label] of order){
+    if(!groups[role].length) continue;
+    html += `<div class="picker-group-label">${label}</div>`;
+    for(const p of groups[role]){
+      const cnt = countMecMonth(p.id);
+      const sel = p.id===currentId?' selected':'';
+      html += `<div class="picker-item${sel}" data-name="${esc(p.name.toLowerCase())}"
+        onclick="selectMec(${weekIdx},'${reuniao}','${funcao}','${p.id}')">
+        <span>${esc(p.name)}</span>
+        <span class="meta">
+          <span class="hist" style="color:${cnt===0?'var(--ok)':cnt<=3?'var(--muted)':'var(--warn)'}">${cnt>0?cnt+'×':'novo'}</span>
+          <span class="tag ${ROLES[p.role].cls}">${ROLES[p.role].short}</span>
+        </span>
+      </div>`;
+    }
+  }
+  if(currentId) html += `<div class="picker-clear" onclick="selectMec(${weekIdx},'${reuniao}','${funcao}',null)">✕ Limpar</div>`;
+  pickerEl.querySelector('.picker-dropdown').innerHTML = html;
+}
+
+function selectMec(weekIdx, reuniao, funcao, id){
+  if(!state.mecanicas[weekIdx]) state.mecanicas[weekIdx]={};
+  if(!state.mecanicas[weekIdx][reuniao]) state.mecanicas[weekIdx][reuniao]={};
+  state.mecanicas[weekIdx][reuniao][funcao] = id;
+  save();
+  document.querySelectorAll('.picker.open').forEach(p=>p.classList.remove('open'));
+  renderMecanicas();
+}
+
+function countMecMonth(personId){
+  let n=0;
+  for(let w=0;w<5;w++){
+    for(const r of REUNIOES){
+      for(const f of MECANICA_FUNCOES){
+        if(state.mecanicas[w]?.[r.key]?.[f.key]===personId) n++;
+      }
+    }
+  }
+  return n;
+}
+
+function sugerirMecanicas(){
+  if(!state.mecanicas) state.mecanicas = emptyMecanicas();
+  const pool = eligibleMecanica();
+  let total = 0;
+
+  for(let n=0; n<5; n++){
+    const w = state.weeks[n];
+    if(w._eventoTipo==='cancel') continue;
+    for(const r of REUNIOES){
+      // Quem já foi designado nesta reunião/semana
+      const usedThisSession = new Set();
+      for(const f of MECANICA_FUNCOES){
+        if(state.mecanicas[n]?.[r.key]?.[f.key]) continue; // já preenchido
+        // Escolhe quem fez menos no mês e não está nesta sessão
+        const sorted = [...pool].sort((a,b)=>{
+          const ca=countMecMonth(a.id), cb=countMecMonth(b.id);
+          if(ca!==cb) return ca-cb;
+          return Math.random()-.5;
+        });
+        const chosen = sorted.find(p=>!usedThisSession.has(p.id));
+        if(chosen){
+          if(!state.mecanicas[n]) state.mecanicas[n]={};
+          if(!state.mecanicas[n][r.key]) state.mecanicas[n][r.key]={};
+          state.mecanicas[n][r.key][f.key] = chosen.id;
+          usedThisSession.add(chosen.id);
+          total++;
+        }
+      }
+    }
+  }
+  save(); renderMecanicas();
+  toast(`✨ ${total} designação(ões) de mecânicas sugerida(s)`);
+}
+
+/* ════════════════════════════════════════
+   LIMPEZA
+════════════════════════════════════════ */
+
+function renderLimpeza(){
+  const container = document.getElementById('limpeza-container');
+  const gruposList = document.getElementById('grupos-list');
+  if(!container||!gruposList) return;
+  if(!state.grupos) state.grupos=[];
+  if(!state.limpeza) state.limpeza=Array(5).fill(null).map(()=>({grupo:null}));
+
+  // Lista de grupos
+  if(!state.grupos.length){
+    gruposList.innerHTML='<p style="font-size:13px;color:var(--muted);font-style:italic">Nenhum grupo cadastrado.</p>';
+  } else {
+    gruposList.innerHTML = state.grupos.map((g,i)=>`
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#fafaf7;border:1px solid var(--line);border-radius:2px;margin-bottom:6px">
+        <span style="font-size:13px;flex:1"><strong>${esc(g.nome)}</strong>
+          <span style="color:var(--muted);font-size:12px;margin-left:6px">${g.membros?.length||0} membro(s)</span>
+        </span>
+        <button class="btn ghost sm" onclick="editGrupo(${i})">✎ Editar</button>
+        <button class="icon-btn danger" onclick="removeGrupo(${i})">×</button>
+      </div>`).join('');
+  }
+
+  // Escala semanal
+  const weeks = state.weeks;
+  let html = '<h3 style="font-family:\'Fraunces\',serif;font-weight:500;font-size:16px;margin-bottom:14px">Escala semanal</h3>';
+
+  if(!state.grupos.length){
+    html += '<p style="font-size:13px;color:var(--muted)">Cadastre grupos acima para montar a escala.</p>';
+    container.innerHTML = html;
+    return;
+  }
+
+  html += `<div style="background:var(--surface);border:1px solid var(--line);overflow-x:auto">
+  <table class="t" style="min-width:500px">
+    <thead><tr>
+      <th>Semana</th>
+      <th>Grupo responsável</th>
+      <th style="width:200px">Membros</th>
+    </tr></thead>
+    <tbody>`;
+
+  for(let n=0; n<5; n++){
+    const w = weeks[n];
+    const dataLabel = w.DATA || `Semana ${n+1}`;
+    const isCancel = w._eventoTipo==='cancel';
+    const grupoIdx = state.limpeza[n]?.grupo;
+    const grupo = grupoIdx!=null ? state.grupos[grupoIdx] : null;
+    const membros = grupo?.membros?.join(', ')||'—';
+
+    html += `<tr ${isCancel?'style="opacity:.4"':''}>
+      <td>${esc(dataLabel)}${isCancel?` <span style="font-size:11px;color:var(--muted)">(${esc(w._evento||'')})</span>`:''}</td>
+      <td>
+        <select onchange="setLimpezaGrupo(${n},this.value)"
+          style="padding:6px 8px;border:1px solid var(--line);background:var(--surface);font-family:inherit;font-size:13px;border-radius:2px;width:100%"
+          ${isCancel?'disabled':''}>
+          <option value="">— Selecionar —</option>
+          ${state.grupos.map((g,i)=>`<option value="${i}" ${grupoIdx===i?'selected':''}>${esc(g.nome)}</option>`).join('')}
+        </select>
+      </td>
+      <td style="font-size:12px;color:var(--ink2)">${esc(membros)}</td>
+    </tr>`;
+  }
+
+  html += `</tbody></table></div>`;
+  container.innerHTML = html;
+}
+
+function addGrupo(){
+  const nome = document.getElementById('grupo-nome').value.trim();
+  if(!nome){ toast('Informe o nome do grupo',true); return; }
+  if(!state.grupos) state.grupos=[];
+  state.grupos.push({nome, membros:[]});
+  save(); renderLimpeza();
+  document.getElementById('grupo-nome').value='';
+  toast('Grupo adicionado');
+}
+
+function removeGrupo(idx){
+  if(!confirm(`Remover "${state.grupos[idx].nome}"?`)) return;
+  state.grupos.splice(idx,1);
+  // Limpa referências
+  if(state.limpeza) state.limpeza.forEach(l=>{ if(l.grupo===idx) l.grupo=null; else if(l.grupo>idx) l.grupo--; });
+  save(); renderLimpeza();
+}
+
+function setLimpezaGrupo(weekIdx, val){
+  if(!state.limpeza) state.limpeza=Array(5).fill(null).map(()=>({grupo:null}));
+  state.limpeza[weekIdx].grupo = val===''?null:parseInt(val);
+  save();
+  // Atualiza apenas a linha sem re-render completo
+  renderLimpeza();
+}
+
+function autoRotateLimpeza(){
+  if(!state.grupos?.length){ toast('Cadastre grupos primeiro',true); return; }
+  // Distribui grupos pelas semanas em sequência
+  let gi=0;
+  for(let n=0; n<5; n++){
+    const w = state.weeks[n];
+    if(w._eventoTipo==='cancel') continue;
+    state.limpeza[n].grupo = gi % state.grupos.length;
+    gi++;
+  }
+  save(); renderLimpeza();
+  toast('Grupos rotacionados automaticamente');
+}
+
+// Modal de edição de grupo (membros)
+function editGrupo(idx){
+  const g = state.grupos[idx];
+  const membros = prompt(`Membros do "${g.nome}"\n(separe os nomes por vírgula):`, g.membros?.join(', ')||'');
+  if(membros===null) return;
+  state.grupos[idx].membros = membros.split(',').map(s=>s.trim()).filter(Boolean);
+  save(); renderLimpeza();
+}
 
 /* ════════════════════════════════════════
    RELATÓRIO DE ESCALA
