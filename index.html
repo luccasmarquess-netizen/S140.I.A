@@ -1054,10 +1054,17 @@ function renderPeople(){
    IMPORTAÇÃO DA APOSTILA (jw.org/pt)
    Estratégia: busca a URL PT via jw.org diretamente.
    O jw.org usa a mesma estrutura de URL em todos os idiomas.
-   Buscamos via proxy allorigins o HTML raw e parseamos o texto.
+   Buscamos via Cloudflare Worker (proxy próprio, sem bloqueio CORS).
    Se falhar, oferece entrada manual de URL ou dados.
 ════════════════════════════════════════ */
 let importedWeeks=null;
+
+// ── URL do seu Cloudflare Worker ──────────────────────────────────────────
+// Após criar o Worker em dash.cloudflare.com, substitua o valor abaixo
+// pela URL gerada (ex: https://s140-proxy.SEU-USUARIO.workers.dev)
+const PROXY_URL = 'https://throbbing-heart-4ebc.luccasmarquess.workers.dev';
+// ─────────────────────────────────────────────────────────────────────────
+
 
 // Par de meses bimestral (jan+fev=1, mar+abr=3, etc.)
 function bimestre(m){ return m%2===1?m:m-1; }
@@ -1178,26 +1185,29 @@ async function searchApostila(){
 // Busca via wol.jw.org API de data (PT-BR = r5/lp-t)
 async function fetchWolByDate(year, isoWeek, day){
   const url = `https://wol.jw.org/pt/wol/dt/r5/lp-t/${year}/${isoWeek}/${day}`;
-  const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-  const r = await fetch(proxy, {signal:AbortSignal.timeout(12000)});
-  if(!r.ok) throw new Error('HTTP '+r.status);
-  const d = await r.json();
-  if(!d.contents || d.contents.length < 500) throw new Error('Resposta vazia');
-  return parseJwHtml(d.contents);
+  return await fetchViaWorker(url);
 }
 
 // Busca via jw.org/pt URL direta da apostila
 async function fetchJwOrgPt(month, year, dayStart, dayEnd){
   const slug = bimestreSlug(month, year);
-  // Monta o slug da semana (ex: Programacao-da-Reuniao-Vida-e-Ministerio-1-7-de-junho-de-2026)
   const mName = MONTHS_PT[month];
   const weekSlug = `Programacao-da-Reuniao-Vida-e-Ministerio-${dayStart}-${dayEnd}-de-${mName}-de-${year}`;
   const url = `https://www.jw.org/pt/biblioteca/apostila-reuniao-vida-e-ministerio/${slug}/${weekSlug}/`;
-  const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-  const r = await fetch(proxy, {signal:AbortSignal.timeout(12000)});
-  if(!r.ok) throw new Error('HTTP '+r.status);
+  return await fetchViaWorker(url);
+}
+
+// Busca via Cloudflare Worker (substitui proxy público)
+async function fetchViaWorker(targetUrl){
+  if(!PROXY_URL || PROXY_URL.includes('SEU-USUARIO')){
+    throw new Error('Configure a URL do Cloudflare Worker no topo do script (constante PROXY_URL).');
+  }
+  const workerUrl = `${PROXY_URL}?url=${encodeURIComponent(targetUrl)}`;
+  const r = await fetch(workerUrl, {signal:AbortSignal.timeout(15000)});
+  if(!r.ok) throw new Error('Worker retornou HTTP '+r.status);
   const d = await r.json();
-  if(!d.contents || d.contents.length < 500) throw new Error('Resposta vazia');
+  if(d.error) throw new Error('Worker: '+d.error);
+  if(!d.contents || d.contents.length < 500) throw new Error('Resposta vazia do jw.org');
   return parseJwHtml(d.contents);
 }
 
