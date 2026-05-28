@@ -1052,8 +1052,51 @@ function renderPeople(){
 
 /* ════════════════════════════════════════
    IMPORTAÇÃO DA APOSTILA (jw.org/pt)
+   Estratégia: busca a URL PT via jw.org diretamente.
+   O jw.org usa a mesma estrutura de URL em todos os idiomas.
+   Buscamos via proxy allorigins o HTML raw e parseamos o texto.
+   Se falhar, oferece entrada manual de URL ou dados.
 ════════════════════════════════════════ */
 let importedWeeks=null;
+
+// Par de meses bimestral (jan+fev=1, mar+abr=3, etc.)
+function bimestre(m){ return m%2===1?m:m-1; }
+function bimestreSlug(m,y){
+  const a=bimestre(m), b=Math.min(a+1,12);
+  const slugs={
+    1:'janeiro-fevereiro',2:'janeiro-fevereiro',
+    3:'marco-abril',4:'marco-abril',
+    5:'maio-junho',6:'maio-junho',
+    7:'julho-agosto',8:'julho-agosto',
+    9:'setembro-outubro',10:'setembro-outubro',
+    11:'novembro-dezembro',12:'novembro-dezembro'
+  };
+  return `apostila-${slugs[m]}-${y}-mwb`;
+}
+
+// Datas de segundas-feiras do mês
+function getMondaysOfMonth(month,year){
+  const mondays=[];
+  const d=new Date(year,month-1,1);
+  while(d.getDay()!==1) d.setDate(d.getDate()+1);
+  while(d.getMonth()===month-1){
+    const day=d.getDate();
+    const lastDay=new Date(year,month,0).getDate();
+    const endDay=Math.min(day+6,lastDay);
+    // Calcula semana ISO para wol.jw.org
+    const isoWeek=getISOWeek(d);
+    mondays.push({year,month,day,endDay,isoWeek,
+      label:`${day} a ${endDay} de ${MONTHS_PT[month]}`,date:new Date(d)});
+    d.setDate(d.getDate()+7);
+  }
+  return mondays;
+}
+function getISOWeek(d){
+  const date=new Date(d); date.setHours(0,0,0,0);
+  date.setDate(date.getDate()+3-(date.getDay()+6)%7);
+  const w1=new Date(date.getFullYear(),0,4);
+  return 1+Math.round(((date-w1)/86400000-3+(w1.getDay()+6)%7)/7);
+}
 
 function openImportModal(){
   const now=new Date();
@@ -1066,11 +1109,14 @@ function openImportModal(){
   document.getElementById('import-modal-bg').classList.add('open');
 }
 function closeImportModal(){document.getElementById('import-modal-bg').classList.remove('open');}
-function setImStatus(msg,cls=''){const el=document.getElementById('im-status');el.style.display='block';el.textContent=msg;el.className='modal-status '+cls;}
+function setImStatus(msg,cls=''){
+  const el=document.getElementById('im-status');
+  el.style.display='block'; el.textContent=msg; el.className='modal-status '+cls;
+}
 
 async function searchApostila(){
   const month=parseInt(document.getElementById('im-month').value);
-  const year=parseInt(document.getElementById('im-year').value);
+  const year =parseInt(document.getElementById('im-year').value);
   const btn=document.getElementById('im-btn-search');
   btn.disabled=true; btn.textContent='⏳ Buscando...';
   document.getElementById('im-btn-apply').style.display='none';
@@ -1079,127 +1125,148 @@ async function searchApostila(){
   importedWeeks=null;
 
   try {
-    // API pública do jw.org — retorna artigos por data
-    // Endpoint: https://b.jw-cdn.org/apis/pub-media/GETPUBMEDIALINKS
-    // Mas para dados estruturados de cada semana, usamos a API de artigos:
-    // https://wol.jw.org/pt/wol/dt/r5/lp-t/{YEAR}/{WEEK}/{DAY}
-    // Descobrimos as segundas-feiras do mês (reuniões acontecem na semana que começa na segunda)
+    const mondays = getMondaysOfMonth(month, year);
+    if(!mondays.length) throw new Error('Nenhuma segunda-feira neste mês.');
 
-    const mondays=getMondaysOfMonth(month,year);
-    if(!mondays.length) throw new Error('Nenhuma segunda-feira encontrada no mês.');
+    setImStatus(`Encontradas ${mondays.length} semana(s). Buscando dados…`,'loading');
 
-    setImStatus(`Encontradas ${mondays.length} semana(s). Buscando programação…`,'loading');
-
-    const weeks=[];
-    for(let i=0;i<mondays.length;i++){
-      const d=mondays[i];
-      setImStatus(`Carregando semana ${i+1} de ${mondays.length} (${d.label})…`,'loading');
+    const weeks = [];
+    for(let i=0; i<mondays.length; i++){
+      const m = mondays[i];
+      setImStatus(`Carregando semana ${i+1}/${mondays.length}: ${m.label}…`,'loading');
       try {
-        const data=await fetchWolWeek(d.year,d.week,d.day);
-        weeks.push({...data, dateLabel:d.label, ok:true});
-      } catch(e){
-        console.warn('Semana',i+1,e);
-        weeks.push({ok:false,dateLabel:d.label});
+        // Tenta via wol.jw.org (API de data)
+        const wkData = await fetchWolByDate(m.year, m.isoWeek, m.day);
+        weeks.push({...wkData, dateLabel:m.label, ok:true});
+      } catch(e1) {
+        // Fallback: tenta via jw.org/pt página direta
+        try {
+          const ptData = await fetchJwOrgPt(month, year, m.day, m.endDay);
+          weeks.push({...ptData, dateLabel:m.label, ok:true});
+        } catch(e2) {
+          console.warn(`Semana ${i+1} falhou:`, e1.message, e2.message);
+          weeks.push({ok:false, dateLabel:m.label, songs:[], fsm:[], nvc:[]});
+        }
       }
     }
 
-    // Filtra apenas semanas do mês solicitado
-    const filtered=weeks.filter(w=>w.month===month||!w.month);
+    const successful = weeks.filter(w=>w.ok && (w.songs.length||w.fsm.length||w.nvc.length));
+    importedWeeks = weeks;
+    showImPreview(weeks);
 
-    importedWeeks=filtered.length?filtered:weeks;
-    showImPreview(importedWeeks);
-    setImStatus(`✓ ${importedWeeks.length} semana(s) carregada(s).\nClique em "Aplicar" para preencher a programação.`,'ok');
-    document.getElementById('im-btn-apply').style.display='';
-
-  } catch(e){
+    if(successful.length > 0){
+      setImStatus(
+        `✓ ${successful.length} de ${weeks.length} semana(s) importada(s) com sucesso.\n` +
+        `Clique em "Aplicar" para preencher temas, cânticos e durações.`, 'ok');
+      document.getElementById('im-btn-apply').style.display='';
+    } else {
+      setImStatus(
+        '⚠ Não foi possível extrair os dados automaticamente.\n\n' +
+        'O jw.org pode estar bloqueando o acesso via proxy. ' +
+        'Use o botão "Preencher manualmente" abaixo ou tente novamente mais tarde.', 'err');
+      showManualEntry(month, year);
+    }
+  } catch(e) {
     console.error(e);
-    setImStatus('⚠ Erro: '+e.message+'\n\nVerifique sua conexão com a internet e tente novamente.','err');
+    setImStatus('⚠ Erro: '+e.message+'\n\nVerifique sua conexão com a internet.','err');
+    showManualEntry(month, year);
   } finally {
     btn.disabled=false; btn.textContent='🔍 Buscar semanas';
   }
 }
 
-function getMondaysOfMonth(month,year){
-  const mondays=[];
-  const d=new Date(year,month-1,1);
-  // avança até a primeira segunda-feira ou mantém se já é
-  while(d.getDay()!==1) d.setDate(d.getDate()+1);
-  while(d.getMonth()===month-1){
-    const day=d.getDate();
-    // semana ISO
-    const week=getISOWeek(d);
-    const label=`${day} a ${Math.min(day+6,new Date(year,month-1+1,0).getDate())} de ${MONTHS_PT[month]}`;
-    mondays.push({year,month,day,week,label,date:new Date(d)});
-    d.setDate(d.getDate()+7);
-  }
-  return mondays;
+// Busca via wol.jw.org API de data (PT-BR = r5/lp-t)
+async function fetchWolByDate(year, isoWeek, day){
+  const url = `https://wol.jw.org/pt/wol/dt/r5/lp-t/${year}/${isoWeek}/${day}`;
+  const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+  const r = await fetch(proxy, {signal:AbortSignal.timeout(12000)});
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  const d = await r.json();
+  if(!d.contents || d.contents.length < 500) throw new Error('Resposta vazia');
+  return parseJwHtml(d.contents);
 }
 
-function getISOWeek(d){
-  const date=new Date(d);
-  date.setHours(0,0,0,0);
-  date.setDate(date.getDate()+3-(date.getDay()+6)%7);
-  const week1=new Date(date.getFullYear(),0,4);
-  return 1+Math.round(((date-week1)/86400000-3+(week1.getDay()+6)%7)/7);
+// Busca via jw.org/pt URL direta da apostila
+async function fetchJwOrgPt(month, year, dayStart, dayEnd){
+  const slug = bimestreSlug(month, year);
+  // Monta o slug da semana (ex: Programacao-da-Reuniao-Vida-e-Ministerio-1-7-de-junho-de-2026)
+  const mName = MONTHS_PT[month];
+  const weekSlug = `Programacao-da-Reuniao-Vida-e-Ministerio-${dayStart}-${dayEnd}-de-${mName}-de-${year}`;
+  const url = `https://www.jw.org/pt/biblioteca/apostila-reuniao-vida-e-ministerio/${slug}/${weekSlug}/`;
+  const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+  const r = await fetch(proxy, {signal:AbortSignal.timeout(12000)});
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  const d = await r.json();
+  if(!d.contents || d.contents.length < 500) throw new Error('Resposta vazia');
+  return parseJwHtml(d.contents);
 }
 
-async function fetchWolWeek(year,week,day){
-  // API do wol.jw.org — retorna HTML da semana
-  // URL: /pt/wol/dt/r5/lp-t/{year}/{week}/{day}
-  // Usamos allorigins como proxy CORS
-  const url=`https://wol.jw.org/pt/wol/dt/r5/lp-t/${year}/${week}/${day}`;
-  const proxy=`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-  const resp=await fetch(proxy,{signal:AbortSignal.timeout(15000)});
-  if(!resp.ok) throw new Error('HTTP '+resp.status);
-  const data=await resp.json();
-  return parseWolHtml(data.contents);
-}
-
-function parseWolHtml(html){
-  // Remove tags mantendo texto
-  const txt=html.replace(/<script[\s\S]*?<\/script>/gi,'')
+// Parser robusto do HTML do jw.org (PT e EN)
+function parseJwHtml(raw){
+  // Remove scripts, styles, tags HTML
+  const txt = raw
+    .replace(/<script[\s\S]*?<\/script>/gi,'')
     .replace(/<style[\s\S]*?<\/style>/gi,'')
-    .replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim();
+    .replace(/&amp;/gi,'&').replace(/&nbsp;/gi,' ')
+    .replace(/&lt;/gi,'<').replace(/&gt;/gi,'>')
+    .replace(/<[^>]+>/g,' ')
+    .replace(/\s+/g,' ').trim();
 
-  // Data
-  const dateRx=/(\d{1,2})\s+(?:a|–|-)\s+(\d{1,2})\s+de\s+(\w+)/i;
-  const dm=dateRx.exec(txt);
-  const dateLabel=dm?`${dm[1]} a ${dm[2]} de ${dm[3]}`:'';
-  const month=dm ? Object.entries(MONTHS_PT).find(([,v])=>v===dm[3].toLowerCase())?.[0] : null;
-
-  // Cânticos: "Cântico N" em PT
-  const songRx=/[Cc]ântico[s]?\s+(\d+)/g;
+  // ── Cânticos ──
+  // PT: "Cântico 138" / EN: "Song 138"
+  const songRx = /(?:[Cc]ântico[s]?|[Ss]ong)\s+(\d+)/g;
   const songs=[]; let sm;
   while((sm=songRx.exec(txt))!==null) songs.push(sm[1]);
   const uniqSongs=[...new Set(songs)];
 
-  // Partes numeradas: "N. Título (X min.)"
-  const partRx=/\b(\d{1,2})\.\s+([^(]{3,60}?)\s+\((\d{1,2})\s*min/g;
+  // ── Partes numeradas ──
+  // Padrão PT: "1. Título do discurso (10 min.)"
+  // Padrão EN: "1. Title of talk (10 min.)"
+  const partRx = /\b(\d{1,2})\.\s+([^(]{4,80}?)\s+\((\d{1,2})\s*min/g;
   const allParts=[]; let pm;
   while((pm=partRx.exec(txt))!==null){
-    allParts.push({num:parseInt(pm[1]),title:pm[2].trim(),dur:pm[3]});
+    allParts.push({num:parseInt(pm[1]),title:pm[2].replace(/\s+$/,''),dur:pm[3]});
   }
 
-  // Classifica partes por posição no texto relativa às seções
-  const idxTesouro=txt.search(/TESOUROS DA PALAVRA DE DEUS/i);
-  const idxFSM=txt.search(/FA[ÇC]A SEU MELHOR|APLIQUE-SE/i);
-  const idxNVC=txt.search(/NOSSA VIDA CRIST[ÃA]/i);
+  // Encontra posições das seções no texto (PT e EN)
+  function findSection(rx){ const m=rx.exec(txt); return m?m.index:Infinity; }
+  const idxFSM = findSection(/FAÇA SEU MELHOR|FA[CÇ]A SEU MELHOR|DO YOUR BEST/i);
+  const idxNVC = findSection(/NOSSA VIDA CRIST[AÃ]|OUR CHRISTIAN LIFE/i);
+  const idxTesouro = findSection(/TESOUROS DA PALAVRA|TREASURES FROM GOD/i);
 
-  const tesouro=allParts.filter(p=>p.num>=1&&p.num<=3).slice(0,3);
-  const fsm=allParts.filter(p=>p.num>=4&&(idxNVC<0||txt.indexOf(p.num+'. '+p.title.slice(0,8))<idxNVC)).slice(0,3);
-  const nvc=allParts.filter(p=>idxNVC>0&&txt.indexOf(p.num+'. '+p.title.slice(0,8))>idxNVC).slice(0,2);
+  // Classifica por posição aproximada
+  function posOf(p){
+    const needle = p.num+'. '+p.title.slice(0,12);
+    const i = txt.indexOf(needle);
+    return i>=0 ? i : txt.indexOf(p.title.slice(0,12));
+  }
+
+  const tesouro=[], fsm=[], nvc=[];
+  for(const p of allParts){
+    const pos=posOf(p);
+    if(pos===Infinity||pos<0){
+      // fallback por número
+      if(p.num<=3) tesouro.push(p);
+      else if(p.num<=6) fsm.push(p);
+      else nvc.push(p);
+    } else if(idxNVC<Infinity && pos>idxNVC) nvc.push(p);
+    else if(idxFSM<Infinity && pos>idxFSM) fsm.push(p);
+    else tesouro.push(p);
+  }
+
+  // Leitura da Bíblia: parte com "4 min" na seção tesouros
+  const leituraRef = (()=>{
+    const lr = /Leitura[^(]*\(\s*4\s*min[^)]*\)\s*([A-Za-zÀ-ú]{2,}\s+\d+:\d+[-\d]*)/i;
+    const lm = lr.exec(txt); return lm?lm[1]:'';
+  })();
 
   return {
-    ok:true, dateLabel,
-    month: month ? parseInt(month) : null,
-    songs:uniqSongs,
-    tesouroTema:tesouro[0]?.title||'',
-    leituraRef: (() => {
-      const lr=/Leitura[^(]*\(\d+\s*min[^)]*\)\s*([A-Za-zÀ-ú]{2,}\s+\d+:\d+[-\d]*)/i;
-      const lm=lr.exec(txt); return lm?lm[1]:'';
-    })(),
-    fsm:fsm.map(p=>({tema:p.title,dur:p.dur})),
-    nvc:nvc.map(p=>({tema:p.title,dur:p.dur})),
+    ok: allParts.length>0 || uniqSongs.length>0,
+    songs: uniqSongs,
+    tesouroTema: tesouro[0]?.title||'',
+    leituraRef,
+    fsm: fsm.slice(0,3).map(p=>({tema:p.title,dur:p.dur})),
+    nvc: nvc.slice(0,2).map(p=>({tema:p.title,dur:p.dur})),
   };
 }
 
@@ -1210,8 +1277,97 @@ function showImPreview(weeks){
     weeks.map((w,i)=>`
       <div class="week-import-row">
         <label><strong>Semana ${i+1}:</strong> ${w.dateLabel||'—'}</label>
-        ${w.ok?'<span class="tag-ok">✓ OK</span>':'<span class="tag-warn">⚠ parcial</span>'}
+        ${w.ok&&(w.songs.length||w.fsm.length)
+          ?'<span class="tag-ok">✓ OK</span>'
+          :'<span class="tag-warn">⚠ sem dados</span>'}
       </div>`).join('');
+}
+
+// Entrada manual: formulário simples por semana
+function showManualEntry(month, year){
+  const prev=document.getElementById('im-preview');
+  const mondays=getMondaysOfMonth(month,year);
+  prev.style.display='block';
+  prev.innerHTML=`
+    <div style="font-size:12px;font-weight:600;margin-bottom:10px">
+      Preencha manualmente os dados de cada semana:
+    </div>
+    ${mondays.map((m,i)=>`
+    <details style="margin-bottom:8px;border:1px solid var(--line);border-radius:2px">
+      <summary style="padding:8px 12px;cursor:pointer;font-size:13px;font-weight:500">
+        Semana ${i+1}: ${m.label}
+      </summary>
+      <div style="padding:12px;display:grid;gap:8px">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+          <div><label style="font-size:11px;color:var(--muted)">Cântico abertura</label>
+            <input type="text" placeholder="ex: 138" id="mi-${i}-c1"></div>
+          <div><label style="font-size:11px;color:var(--muted)">Cântico meio</label>
+            <input type="text" placeholder="ex: 45" id="mi-${i}-c2"></div>
+          <div><label style="font-size:11px;color:var(--muted)">Cântico final</label>
+            <input type="text" placeholder="ex: 12" id="mi-${i}-c3"></div>
+        </div>
+        <div><label style="font-size:11px;color:var(--muted)">Tema Tesouros</label>
+          <input type="text" placeholder="ex: Confie em Jeová" id="mi-${i}-tt"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          <div><label style="font-size:11px;color:var(--muted)">Tema FSM 1 (min)</label>
+            <div style="display:flex;gap:4px">
+              <input type="text" placeholder="Tema" id="mi-${i}-f1t" style="flex:1">
+              <input type="text" placeholder="min" id="mi-${i}-f1d" style="width:48px">
+            </div></div>
+          <div><label style="font-size:11px;color:var(--muted)">Tema FSM 2 (min)</label>
+            <div style="display:flex;gap:4px">
+              <input type="text" placeholder="Tema" id="mi-${i}-f2t" style="flex:1">
+              <input type="text" placeholder="min" id="mi-${i}-f2d" style="width:48px">
+            </div></div>
+        </div>
+        <div><label style="font-size:11px;color:var(--muted)">Tema FSM 3 (min)</label>
+          <div style="display:flex;gap:4px">
+            <input type="text" placeholder="Tema" id="mi-${i}-f3t" style="flex:1">
+            <input type="text" placeholder="min" id="mi-${i}-f3d" style="width:48px">
+          </div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          <div><label style="font-size:11px;color:var(--muted)">Tema NVC 1 (min)</label>
+            <div style="display:flex;gap:4px">
+              <input type="text" placeholder="Tema" id="mi-${i}-n1t" style="flex:1">
+              <input type="text" placeholder="min" id="mi-${i}-n1d" style="width:48px">
+            </div></div>
+          <div><label style="font-size:11px;color:var(--muted)">Tema NVC 2 (min)</label>
+            <div style="display:flex;gap:4px">
+              <input type="text" placeholder="Tema" id="mi-${i}-n2t" style="flex:1">
+              <input type="text" placeholder="min" id="mi-${i}-n2d" style="width:48px">
+            </div></div>
+        </div>
+      </div>
+    </details>`).join('')}
+    <button class="btn" style="width:100%;margin-top:8px" onclick="applyManualEntry(${month},${year})">
+      ✓ Aplicar dados manuais
+    </button>
+  `;
+}
+
+function applyManualEntry(month, year){
+  const mondays=getMondaysOfMonth(month,year);
+  importedWeeks = mondays.map((m,i)=>({
+    ok:true, dateLabel:m.label,
+    songs:[
+      document.getElementById(`mi-${i}-c1`)?.value.trim()||'',
+      document.getElementById(`mi-${i}-c2`)?.value.trim()||'',
+      document.getElementById(`mi-${i}-c3`)?.value.trim()||'',
+    ],
+    tesouroTema: document.getElementById(`mi-${i}-tt`)?.value.trim()||'',
+    leituraRef:'',
+    fsm:[
+      {tema:document.getElementById(`mi-${i}-f1t`)?.value.trim()||'', dur:document.getElementById(`mi-${i}-f1d`)?.value.trim()||''},
+      {tema:document.getElementById(`mi-${i}-f2t`)?.value.trim()||'', dur:document.getElementById(`mi-${i}-f2d`)?.value.trim()||''},
+      {tema:document.getElementById(`mi-${i}-f3t`)?.value.trim()||'', dur:document.getElementById(`mi-${i}-f3d`)?.value.trim()||''},
+    ],
+    nvc:[
+      {tema:document.getElementById(`mi-${i}-n1t`)?.value.trim()||'', dur:document.getElementById(`mi-${i}-n1d`)?.value.trim()||''},
+      {tema:document.getElementById(`mi-${i}-n2t`)?.value.trim()||'', dur:document.getElementById(`mi-${i}-n2d`)?.value.trim()||''},
+    ],
+  }));
+  document.getElementById('im-btn-apply').style.display='';
+  setImStatus('Dados manuais prontos. Clique em "Aplicar".','ok');
 }
 
 function applyApostila(){
@@ -1234,7 +1390,8 @@ function applyApostila(){
     if(nvc[1]){if(nvc[1].tema)w.NVC2_TEMA=nvc[1].tema;if(nvc[1].dur)w.NVC2_DUR=nvc[1].dur;}
     applied++;
   });
-  save();closeImportModal();renderSchedule();toast(`✓ ${applied} semana(s) importada(s)`);
+  save();closeImportModal();renderSchedule();
+  toast(`✓ ${applied} semana(s) aplicada(s)`);
 }
 
 /* ════════════════════════════════════════
