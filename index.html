@@ -1138,22 +1138,36 @@ async function searchApostila(){
     setImStatus(`Encontradas ${mondays.length} semana(s). Buscando dados…`,'loading');
 
     const weeks = [];
+    // DEBUG: imprime HTML da primeira semana no console
+    if(mondays.length > 0){
+      const dm = mondays[0];
+      try{
+        const slug = bimestreSlug(month, year);
+        const mName = MONTHS_PT[month];
+        const weekSlug = `Programacao-da-Reuniao-Vida-e-Ministerio-${dm.day}-${dm.endDay}-de-${mName}-de-${year}`;
+        const dbgUrl = `https://www.jw.org/pt/biblioteca/apostila-reuniao-vida-e-ministerio/${slug}/${weekSlug}/`;
+        const workerUrl = `${PROXY_URL}?url=${encodeURIComponent(dbgUrl)}`;
+        const dbgR = await fetch(workerUrl, {signal:AbortSignal.timeout(15000)});
+        const dbgD = await dbgR.json();
+        console.log('[DEBUG HTML semana 1 - chars 3000-6000]:', dbgD.contents?.slice(3000,6000));
+        console.log('[DEBUG HTML semana 1 - chars 6000-9000]:', dbgD.contents?.slice(6000,9000));
+        console.log('[DEBUG HTML semana 1 - chars 9000-12000]:', dbgD.contents?.slice(9000,12000));
+      }catch(dbgE){console.warn('debug erro:', dbgE.message);}
+    }
     for(let i=0; i<mondays.length; i++){
       const m = mondays[i];
       setImStatus(`Carregando semana ${i+1}/${mondays.length}: ${m.label}…`,'loading');
       try {
-        // Tenta via wol.jw.org (API de data)
-        const wkData = await fetchWolByDate(m.year, m.isoWeek, m.day);
-        weeks.push({...wkData, dateLabel:m.label, ok:true});
-      } catch(e1) {
-        // Fallback: tenta via jw.org/pt página direta
-        try {
-          const ptData = await fetchJwOrgPt(month, year, m.day, m.endDay);
-          weeks.push({...ptData, dateLabel:m.label, ok:true});
-        } catch(e2) {
-          console.warn(`Semana ${i+1} falhou:`, e1.message, e2.message);
+        const wkData = await fetchWeekPage(month, year, m.day, m.endDay);
+        if(wkData.ok){
+          weeks.push({...wkData, dateLabel:m.label, ok:true});
+        } else {
+          console.warn(`Semana ${i+1}: parser retornou vazio`, wkData);
           weeks.push({ok:false, dateLabel:m.label, songs:[], fsm:[], nvc:[]});
         }
+      } catch(e) {
+        console.warn(`Semana ${i+1} falhou:`, e.message);
+        weeks.push({ok:false, dateLabel:m.label, songs:[], fsm:[], nvc:[]});
       }
     }
 
@@ -1183,32 +1197,57 @@ async function searchApostila(){
 }
 
 // Busca via wol.jw.org API de data (PT-BR = r5/lp-t)
-async function fetchWolByDate(year, isoWeek, day){
-  const url = `https://wol.jw.org/pt/wol/dt/r5/lp-t/${year}/${isoWeek}/${day}`;
-  return await fetchViaWorker(url);
-}
-
-// Busca via jw.org/pt URL direta da apostila
-async function fetchJwOrgPt(month, year, dayStart, dayEnd){
+// Busca a página de uma semana específica no jw.org/pt
+// Tenta construir a URL pelo padrão e fallback por índice
+async function fetchWeekPage(month, year, dayStart, dayEnd){
   const slug = bimestreSlug(month, year);
   const mName = MONTHS_PT[month];
+
+  // Padrão principal: slug com dia início e fim
   const weekSlug = `Programacao-da-Reuniao-Vida-e-Ministerio-${dayStart}-${dayEnd}-de-${mName}-de-${year}`;
   const url = `https://www.jw.org/pt/biblioteca/apostila-reuniao-vida-e-ministerio/${slug}/${weekSlug}/`;
   return await fetchViaWorker(url);
 }
 
-// Busca via Cloudflare Worker (substitui proxy público)
+// Busca o índice do bimestre e extrai as URLs das semanas do mês alvo
+async function fetchWeekUrlsFromIndex(month, year){
+  const slug = bimestreSlug(month, year);
+  const indexUrl = `https://www.jw.org/pt/biblioteca/apostila-reuniao-vida-e-ministerio/${slug}/`;
+  const data = await fetchViaWorker(indexUrl);
+  // data.rawHtml tem o HTML do índice
+  return extractWeekUrls(data.rawHtml || '', month, year);
+}
+
+function extractWeekUrls(html, month, year){
+  const mName = MONTHS_PT[month];
+  const urls = [];
+  // Procura links com href contendo o nome do mês e ano
+  const rx = /href="([^"]*Programacao[^"]*de-${mName}[^"]*)"/gi
+    .toString().replace('${mName}', mName);
+  const re = new RegExp(rx.slice(1,-2), 'gi');
+  let m;
+  while((m = re.exec(html)) !== null){
+    let url = m[1];
+    if(!url.startsWith('http')) url = 'https://www.jw.org' + url;
+    if(!urls.includes(url)) urls.push(url);
+  }
+  return urls;
+}
+
+// Busca via Cloudflare Worker e parseia o HTML
 async function fetchViaWorker(targetUrl){
   if(!PROXY_URL || PROXY_URL.includes('SEU-USUARIO')){
-    throw new Error('Configure a URL do Cloudflare Worker no topo do script (constante PROXY_URL).');
+    throw new Error('Configure a URL do Cloudflare Worker (constante PROXY_URL).');
   }
   const workerUrl = `${PROXY_URL}?url=${encodeURIComponent(targetUrl)}`;
   const r = await fetch(workerUrl, {signal:AbortSignal.timeout(15000)});
-  if(!r.ok) throw new Error('Worker retornou HTTP '+r.status);
+  if(!r.ok) throw new Error('Worker HTTP '+r.status);
   const d = await r.json();
   if(d.error) throw new Error('Worker: '+d.error);
-  if(!d.contents || d.contents.length < 500) throw new Error('Resposta vazia do jw.org');
-  return parseJwHtml(d.contents);
+  if(!d.contents || d.contents.length < 200) throw new Error('Resposta vazia');
+  const parsed = parseJwHtml(d.contents);
+  parsed.rawHtml = d.contents; // guarda HTML bruto para debug
+  return parsed;
 }
 
 // Parser do HTML do jw.org/pt e wol.jw.org
