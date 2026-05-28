@@ -1529,7 +1529,9 @@ async function buildDocxBlob(weekIndices){
   for(let n=1;n<=5;n++){
     const w = weekIndices.includes(n-1) ? state.weeks[n-1] : emptyWeekValues();
     for(const part of PARTS){
-      const tag=`S${n}_${part.tag}`;
+      // Mapeia tags renomeadas para compatibilidade com o template docx
+      const templateTag = part.tag==='FSM1_DUPLA_SP' ? 'FSM1_PRESIDENTE_SP' : part.tag;
+      const tag=`S${n}_${templateTag}`;
       let val='';
       if(part.type==='person') val=personName(w[part.tag]);
       else if(part.type==='pair') val=pairName(w[part.tag]);
