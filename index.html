@@ -1090,11 +1090,20 @@ function getMondaysOfMonth(month,year){
   while(d.getMonth()===month-1){
     const day=d.getDate();
     const lastDay=new Date(year,month,0).getDate();
-    const endDay=Math.min(day+6,lastDay);
+    const endDayRaw=day+6;
+    const endDay=endDayRaw; // não limita — fetchWeekPage trata o cruzamento
     // Calcula semana ISO para wol.jw.org
     const isoWeek=getISOWeek(d);
-    mondays.push({year,month,day,endDay,isoWeek,
-      label:`${day} a ${endDay} de ${MONTHS_PT[month]}`,date:new Date(d)});
+    // Label: se semana cruza mês, mostra "29 de junho a 5 de julho"
+    let label;
+    if(endDayRaw > lastDay){
+      const nm=month===12?1:month+1;
+      const endDayNext=endDayRaw-lastDay;
+      label=`${day} de ${MONTHS_PT[month]} a ${endDayNext} de ${MONTHS_PT[nm]}`;
+    } else {
+      label=`${day} a ${endDayRaw} de ${MONTHS_PT[month]}`;
+    }
+    mondays.push({year,month,day,endDay,isoWeek,label,date:new Date(d)});
     d.setDate(d.getDate()+7);
   }
   return mondays;
@@ -1191,23 +1200,19 @@ async function fetchWeekPage(month, year, dayStart, dayEnd){
   const mName = MONTHS_PT[month];
   const lastDayOfMonth = new Date(year, month, 0).getDate();
 
-  let weekSlug, slugMonth, slugYear;
+  let weekSlug;
   if(dayEnd > lastDayOfMonth){
-    // Semana cruza mês — bimestre e slug usam o mês seguinte
+    // Semana cruza mês — bimestre usa o mês ATUAL (onde a semana começa)
     const nextMonth = month === 12 ? 1 : month + 1;
     const nextYear  = month === 12 ? year + 1 : year;
     const nextMName = MONTHS_PT[nextMonth];
     const dayEndNext = dayEnd - lastDayOfMonth;
-    slugMonth = nextMonth;
-    slugYear  = nextYear;
     weekSlug = `Programação-da-Reunião-Vida-e-Ministério-para-${dayStart}-de-${mName}-${dayEndNext}-de-${nextMName}-de-${nextYear}`;
   } else {
-    slugMonth = month;
-    slugYear  = year;
     weekSlug = `Programação-da-Reunião-Vida-e-Ministério-para-${dayStart}-${dayEnd}-de-${mName}-de-${year}`;
   }
 
-  const slug = bimestreSlug(slugMonth, slugYear);
+  const slug = bimestreSlug(month, year);
   const url = `https://www.jw.org/pt/biblioteca/jw-apostila-do-mes/${slug}/${weekSlug}/`;
   return await fetchViaWorker(url);
 }
