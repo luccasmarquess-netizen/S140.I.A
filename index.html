@@ -19,6 +19,12 @@
   --elder:#2c5f7f; --servant:#5a7a4a; --publisher:#8a7a4a; --female:#8a5a7a;
   --ok:#5a7a4a; --warn:#b07a20; --err:#a33;
 }
+[data-theme="dark"] {
+  --bg:#1a1814; --surface:#242018; --ink:#f0ece4; --ink2:#c8c4bc;
+  --muted:#7a7670; --line:#3a3630; --accent:#d4a574; --soft:#6b3410;
+  --elder:#6ab0d8; --servant:#8ab87a; --publisher:#c8b87a; --female:#c89ab8;
+  --ok:#8ab87a; --warn:#d4a040; --err:#e06060;
+}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif;font-size:14px;line-height:1.5;min-height:100vh}
 
@@ -228,6 +234,7 @@ table.t tr:hover td{background:#fafaf7}
 <header class="app-header">
   <h1>S-140 <small id="header-cong">Programador de Reunião</small></h1>
   <div class="hdr-btns">
+    <button onclick="toggleTheme()" id="theme-btn" title="Alternar tema">🌙</button>
     <button onclick="openImportModal()">📖 Importar apostila</button>
     <button onclick="exportData()">💾 Exportar</button>
     <button onclick="document.getElementById('imp-file').click()">📂 Importar</button>
@@ -240,6 +247,7 @@ table.t tr:hover td{background:#fafaf7}
 <nav class="tabs">
   <button class="active" data-view="schedule" onclick="switchView('schedule')">Programação</button>
   <button data-view="people" onclick="switchView('people')">Pessoas</button>
+  <button data-view="escala" onclick="switchView('escala')">Escala</button>
   <button data-view="settings" onclick="switchView('settings')">Configurações</button>
 </nav>
 
@@ -277,6 +285,23 @@ table.t tr:hover td{background:#fafaf7}
     </tr></thead>
     <tbody id="ppl-tbody"></tbody>
   </table>
+</section>
+
+<!-- ══ ESCALA ══ -->
+<section class="view" id="view-escala">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
+    <h2 style="font-family:'Fraunces',serif;font-weight:500;font-size:22px">Relatório de Escala</h2>
+    <div style="display:flex;gap:8px">
+      <select id="escala-filter" onchange="renderEscala()" style="padding:7px 10px;border:1px solid var(--line);background:var(--surface);font-family:inherit;font-size:13px;border-radius:2px">
+        <option value="">Todas as funções</option>
+        <option value="elder">Anciãos</option>
+        <option value="servant">Servos ministeriais</option>
+        <option value="publisher">Publicadores</option>
+        <option value="female">Publicadoras</option>
+      </select>
+    </div>
+  </div>
+  <div id="escala-container"></div>
 </section>
 
 <!-- ══ SETTINGS ══ -->
@@ -499,7 +524,7 @@ const PARTS = [
   // Abertura
   {tag:'H_CANTICO1',       label:'Horário',                 type:'time',   section:'Abertura'},
   {tag:'N_CANTICO1',       label:'Nº cântico abertura',     type:'text',   section:'Abertura'},
-  {tag:'ORACAO_INICIAL',   label:'Oração inicial',          type:'person', elig:'eldersServants', restrict:'oração',    section:'Abertura'},
+  {tag:'ORACAO_INICIAL',   label:'Oração inicial',          type:'person', elig:'allMen',         restrict:'oração',    section:'Abertura'},
   {tag:'H_COMENT_INICIAIS',label:'Horário com. iniciais',   type:'time',   dur:1, section:'Abertura'},
   // Tesouros
   {tag:'H_TESOURO',        label:'Horário Tesouros',        type:'time',   section:'Tesouros da Palavra de Deus'},
@@ -534,11 +559,12 @@ const PARTS = [
   {tag:'NVC2_DUR',         label:'Min',                     type:'dur',    section:'Nossa Vida Cristã'},
   {tag:'NVC2_NOME',        label:'Designado NVC 2',         type:'person', elig:'eldersServants', restrict:'nvc', section:'Nossa Vida Cristã'},
   {tag:'H_EBC',            label:'Horário EBC',             type:'time',   section:'Nossa Vida Cristã'},
-  {tag:'EBC_DUPLA',        label:'EBC — Dirigente / Leitor',type:'pair',   elig:'eldersServants', restrict:'ebc', section:'Nossa Vida Cristã'},
+  {tag:'EBC_DIRIGENTE',     label:'EBC — Dirigente',         type:'person', elig:'eldersServants', restrict:'ebc', section:'Nossa Vida Cristã'},
+  {tag:'EBC_LEITOR',        label:'EBC — Leitor',            type:'person', elig:'allMen',         restrict:'ebc', section:'Nossa Vida Cristã'},
   {tag:'H_COMENT_FINAIS',  label:'Horário com. finais',     type:'time',   dur:3, section:'Nossa Vida Cristã'},
   {tag:'H_CANTICO3',       label:'Horário',                 type:'time',   section:'Nossa Vida Cristã'},
   {tag:'N_CANTICO3',       label:'Nº cântico final',        type:'text',   section:'Nossa Vida Cristã'},
-  {tag:'ORACAO_FINAL',     label:'Oração final',            type:'person', elig:'eldersServants', restrict:'oração', section:'Nossa Vida Cristã'},
+  {tag:'ORACAO_FINAL',     label:'Oração final',            type:'person', elig:'allMen',         restrict:'oração', section:'Nossa Vida Cristã'},
 ];
 
 // Sequência de duração para recalcular horários
@@ -735,7 +761,25 @@ function switchView(name){
     document.getElementById('cfg-start').value=state.startTime||'19:00';
     renderEventsList();
   }
+  if(name==='escala') renderEscala();
 }
+function toggleTheme(){
+  const isDark = document.documentElement.getAttribute('data-theme')==='dark';
+  const newTheme = isDark ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', newTheme);
+  document.getElementById('theme-btn').textContent = newTheme==='dark' ? '☀' : '🌙';
+  localStorage.setItem('s140-theme', newTheme);
+}
+
+function applyTheme(){
+  const saved = localStorage.getItem('s140-theme');
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const theme = saved || (prefersDark ? 'dark' : 'light');
+  document.documentElement.setAttribute('data-theme', theme);
+  const btn = document.getElementById('theme-btn');
+  if(btn) btn.textContent = theme==='dark' ? '☀' : '🌙';
+}
+
 function saveCfg(){
   state.congregacao=document.getElementById('cfg-cong').value.trim();
   state.startTime=document.getElementById('cfg-start').value.trim();
@@ -757,7 +801,7 @@ function weekProgress(idx){
   const w=state.weeks[idx];
   if(w._eventoTipo==='cancel') return {filled:0,total:0,pct:100};
   const required=PARTS.filter(p=>(p.type==='person'||p.type==='pair')
-    && !(p.tag==='EBC_DUPLA' && w._eventoTipo==='visit'));
+    && !(( p.tag==='EBC_DIRIGENTE'||p.tag==='EBC_LEITOR') && w._eventoTipo==='visit'));
   const total=required.length;
   const filled=required.filter(p=>{
     const v=w[p.tag];
@@ -921,10 +965,11 @@ function buildWeekPanel(n){
       <div class="field-label" style="color:var(--elder)">🎙 Discurso do Superintendente de Circuito</div>
       <div style="font-size:13px;color:var(--muted);font-style:italic;align-self:center">${esc(w._eventoTema||'tema a definir')}</div>
     </div>` : `
-    <div class="row r-simple">
+    <div class="row" style="grid-template-columns:80px 1fr 1fr 1fr">
       ${fld('H_EBC')}
-      <div class="field-label">Estudo bíblico de congregação (30 min)</div>
-      ${fld('EBC_DUPLA')}
+      <div class="field-label">EBC (30 min)</div>
+      ${fld('EBC_DIRIGENTE')}
+      ${fld('EBC_LEITOR')}
     </div>`}
     <div class="row r-time-label">
       ${fld('H_COMENT_FINAIS')}
@@ -1024,7 +1069,18 @@ function fillPicker(pickerEl,n,tag,pairKey){
     }
     return true;
   });
-  pool.sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
+  pool.sort((a,b)=>{
+    // Frequência no mês atual
+    const hist = buildMonthHistory();
+    const ca = (hist[a.id]||[]).length;
+    const cb = (hist[b.id]||[]).length;
+    if(ca!==cb) return ca-cb;
+    // Última designação em qualquer parte
+    const la = lastAssignedAny(a.id);
+    const lb = lastAssignedAny(b.id);
+    if(la!==lb) return la-lb;
+    return a.name.localeCompare(b.name,'pt-BR');
+  });
 
   const w=state.weeks[n];
   const currentId=pairKey ? w[tag][pairKey] : w[tag];
@@ -1052,11 +1108,15 @@ function fillPicker(pickerEl,n,tag,pairKey){
       // Última vez que fez esta parte
       const lastTime = lastAssigned(p.id, tag, n);
       const lastLabel = lastTime!==null ? `S${lastTime+1}` : '';
+      const monthCount = (buildMonthHistory()[p.id]||[]).length;
+      const countLabel = monthCount>0 ? `${monthCount}×` : 'novo';
+      const countColor = monthCount===0 ? 'var(--ok)' : monthCount<=2 ? 'var(--muted)' : 'var(--warn)';
       html+=`<div class="picker-item${sel}${conflict?' restricted':''}" data-name="${esc(p.name.toLowerCase())}"
         onclick="selectPerson(${n},'${tag}','${p.id}',${pairKey?`'${pairKey}'`:'null'})">
         <span>${esc(p.name)}${conflictIcon}</span>
         <span class="meta">
-          ${lastLabel?`<span class="hist" title="Última vez: Semana ${lastTime+1}">${lastLabel}</span>`:''}
+          <span class="hist" style="color:${countColor};font-weight:500" title="${monthCount} designação(ões) este mês">${countLabel}</span>
+          ${lastLabel?`<span class="hist" title="Última vez: Semana ${lastTime+1}">·S${lastTime+1}</span>`:''}
           <span class="tag ${ROLES[p.role].cls}">${ROLES[p.role].short}</span>
         </span>
       </div>`;
@@ -1090,6 +1150,18 @@ function detectConflict(personId, tag, weekIdx, pairKey){
       return `Já designado em "${part.label}" nesta semana`;
   }
   return null;
+}
+
+// Última semana em qualquer parte (para ordenação geral)
+function lastAssignedAny(personId){
+  for(let i=4; i>=0; i--){
+    const w = state.weeks[i];
+    for(const part of PARTS){
+      if(part.type==='person' && w[part.tag]===personId) return i;
+      if(part.type==='pair' && (w[part.tag]?.a===personId||w[part.tag]?.b===personId)) return i;
+    }
+  }
+  return -1; // nunca designado = prioridade máxima
 }
 
 // Última semana (índice) em que a pessoa fez esta parte específica
@@ -1810,8 +1882,12 @@ async function generateDocx(){
 
     for(let n=1;n<=5;n++){
       const w=state.weeks[n-1];
+      // EBC: combina Dirigente + Leitor
+      const ebcDir=personName(w.EBC_DIRIGENTE), ebcLei=personName(w.EBC_LEITOR);
+      xml=xml.replaceAll(`{{S${n}_EBC_DUPLA}}`, escXml(ebcDir&&ebcLei?`${ebcDir} / ${ebcLei}`:ebcDir||ebcLei||''));
+
       for(const part of PARTS){
-        // Mapeia tags renomeadas para compatibilidade com o template docx
+        if(part.tag==='EBC_DIRIGENTE'||part.tag==='EBC_LEITOR') continue;
         const templateTag = part.tag==='FSM1_DUPLA_SP' ? 'FSM1_PRESIDENTE_SP' : part.tag;
         const tag=`S${n}_${templateTag}`;
         let val='';
@@ -1940,6 +2016,96 @@ function getEventForWeek(year, month, dayStart){
   return events.find(ev=>ev.date===monday)||null;
 }
 
+
+/* ════════════════════════════════════════
+   RELATÓRIO DE ESCALA
+════════════════════════════════════════ */
+function renderEscala(){
+  const container = document.getElementById('escala-container');
+  if(!container) return;
+  const filter = document.getElementById('escala-filter')?.value||'';
+
+  // Monta dados: para cada pessoa, lista suas designações por semana e parte
+  let people = [...state.people];
+  if(filter) people = people.filter(p=>p.role===filter);
+  people.sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
+
+  // Partes que aparecem no relatório (person e pair)
+  const reportParts = PARTS.filter(p=>p.type==='person'||p.type==='pair');
+
+  // Para cada semana, constrói mapa personId→[tags]
+  const weekMaps = state.weeks.map(w=>{
+    const m = {};
+    for(const part of reportParts){
+      if(part.type==='person' && w[part.tag]){
+        if(!m[w[part.tag]]) m[w[part.tag]]=[];
+        m[w[part.tag]].push(part.label);
+      }
+      if(part.type==='pair'){
+        const v = w[part.tag];
+        if(v?.a){ if(!m[v.a]) m[v.a]=[]; m[v.a].push(part.label+' (est.)'); }
+        if(v?.b){ if(!m[v.b]) m[v.b]=[]; m[v.b].push(part.label+' (aj.)'); }
+      }
+    }
+    return m;
+  });
+
+  // Semanas com data
+  const weekLabels = state.weeks.map((w,i)=>w.DATA||`Semana ${i+1}`);
+
+  if(!people.length){
+    container.innerHTML='<p style="color:var(--muted);font-size:13px">Nenhuma pessoa encontrada.</p>';
+    return;
+  }
+
+  // Calcula total de designações por pessoa
+  const totals = {};
+  for(const p of people){
+    totals[p.id] = weekMaps.reduce((acc,m)=>acc+(m[p.id]?.length||0),0);
+  }
+
+  // Tabela
+  let html = `
+  <div style="overflow-x:auto">
+  <table class="t" style="min-width:700px">
+    <thead><tr>
+      <th style="min-width:160px">Pessoa</th>
+      <th style="min-width:60px;text-align:center">Total</th>
+      ${weekLabels.map((l,i)=>`<th style="min-width:120px;font-size:10px">${esc(l)}</th>`).join('')}
+    </tr></thead>
+    <tbody>`;
+
+  for(const p of people){
+    const total = totals[p.id];
+    const totalColor = total===0?'var(--ok)':total<=3?'var(--ink2)':total<=6?'var(--warn)':'var(--err)';
+    html += `<tr>
+      <td>
+        <strong>${esc(p.name)}</strong>
+        <span class="tag ${ROLES[p.role].cls}" style="margin-left:6px">${ROLES[p.role].short}</span>
+      </td>
+      <td style="text-align:center;font-weight:600;color:${totalColor}">${total||'—'}</td>
+      ${weekMaps.map((m,wi)=>{
+        const parts = m[p.id]||[];
+        const w = state.weeks[wi];
+        if(w._eventoTipo==='cancel') return `<td style="background:var(--line);font-size:11px;color:var(--muted);text-align:center">—</td>`;
+        if(!parts.length) return `<td style="color:var(--line);text-align:center">·</td>`;
+        const bgColor = parts.length===1?'#ebf0e7':'#fff3e6';
+        const txtColor = parts.length===1?'var(--servant)':'var(--warn)';
+        return `<td style="background:${bgColor};font-size:11px;color:${txtColor};padding:4px 8px">
+          ${parts.map(pt=>esc(pt)).join('<br>')}
+        </td>`;
+      }).join('')}
+    </tr>`;
+  }
+
+  html += `</tbody></table></div>
+  <p style="font-size:12px;color:var(--muted);margin-top:12px">
+    Verde = 1 parte · Laranja = 2+ partes na semana · Total em vermelho = 7+ designações no mês
+  </p>`;
+
+  container.innerHTML = html;
+}
+
 /* ════════════════════════════════════════
    SUGESTÃO AUTOMÁTICA DE DESIGNAÇÕES
 ════════════════════════════════════════ */
@@ -1990,13 +2156,31 @@ function canAssign(personId, tag, weekIdx, currentAssignments, monthHist){
   const isElderOrServant = role==='elder'||role==='servant';
   const isPublisher = role==='publisher'||role==='female';
 
+  // Seções que podem ser combinadas na mesma semana sem restrição
+  // Tesouros + EBC = ok; Leitura (Tesouros) + FSM = ok
+  const COMPATIBLE_SECTIONS = [
+    ['Tesouros da Palavra de Deus', 'Nossa Vida Cristã'], // Tesouros + EBC ok
+    ['Tesouros da Palavra de Deus', 'Faça Seu Melhor no Ministério'], // Leitura + FSM ok
+  ];
+  function sectionsCompatible(s1, s2){
+    if(s1===s2) return false; // mesma seção = não compatível
+    return COMPATIBLE_SECTIONS.some(pair=>
+      (pair[0]===s1&&pair[1]===s2)||(pair[0]===s2&&pair[1]===s1)
+    );
+  }
+
   // ── Regras para anciãos e servos ──
   if(isElderOrServant){
-    // 1. Não fazer duas partes CONSECUTIVAS na mesma semana
-    //    (mesma seção = consecutivas; seções diferentes = ok)
     const thisWeekAssignments = currentAssignments[weekIdx]||[];
-    const sameSection = thisWeekAssignments.filter(a=>a.personId===personId && sectionOf(a.tag)===section);
-    if(sameSection.length>0) return false;
+    // 1. Não fazer duas partes na mesma seção na mesma semana
+    //    Exceção: seções compatíveis (Tesouros+NVC, Tesouros+FSM)
+    const conflictInWeek = thisWeekAssignments.filter(a=>{
+      if(a.personId!==personId) return false;
+      const otherSection = sectionOf(a.tag);
+      if(sectionsCompatible(section, otherSection)) return false; // ok combinar
+      return otherSection===section; // mesma seção = conflito
+    });
+    if(conflictInWeek.length>0) return false;
 
     // 2. Não repetir a mesma parte na semana anterior ou posterior
     const hist = monthHist[personId]||[];
@@ -2009,7 +2193,6 @@ function canAssign(personId, tag, weekIdx, currentAssignments, monthHist){
     if(tag==='PRESIDENTE'){
       const prezHist = hist.filter(h=>h.tag==='PRESIDENTE');
       if(prezHist.length>=2) return false;
-      // Intervalo mínimo de 2 semanas entre presidências
       const tooClose = prezHist.some(h=>Math.abs(h.weekIdx-weekIdx)<=1);
       if(tooClose) return false;
     }
@@ -2017,16 +2200,22 @@ function canAssign(personId, tag, weekIdx, currentAssignments, monthHist){
 
   // ── Regras para publicadores ──
   if(isPublisher){
-    // Intervalo mínimo de 2 semanas entre designações da mesma parte
     const hist = monthHist[personId]||[];
+    // Intervalo mínimo de 2 semanas entre designações da mesma parte
     const sameTagRecent = hist.filter(h=>
       h.tag===tag && Math.abs(h.weekIdx-weekIdx)<=1
     );
     if(sameTagRecent.length>0) return false;
 
-    // Não fazer duas partes na mesma semana
+    // Publicadores podem fazer Leitura + FSM na mesma semana
+    // Para outras combinações: não fazer duas partes na mesma semana
     const thisWeekAssignments = currentAssignments[weekIdx]||[];
-    if(thisWeekAssignments.find(a=>a.personId===personId)) return false;
+    const alreadyThisWeek = thisWeekAssignments.filter(a=>a.personId===personId);
+    if(alreadyThisWeek.length>0){
+      // Permite se as seções são compatíveis (ex: Leitura + FSM)
+      const alreadySection = sectionOf(alreadyThisWeek[0].tag);
+      if(!sectionsCompatible(alreadySection, section)) return false;
+    }
   }
 
   return true;
@@ -2060,11 +2249,15 @@ function choosePerson(tag, weekIdx, currentAssignments, monthHist, excludeIds=[]
 
   // Ordena por quem fez menos no mês (balanceamento)
   pool.sort((a,b)=>{
+    // Ordena por: menos designações no mês → última designação mais antiga → nome
     const ca = countMonth(a.id, monthHist);
     const cb = countMonth(b.id, monthHist);
     if(ca!==cb) return ca-cb;
-    // Empate: aleatoriza levemente
-    return Math.random()-0.5;
+    // Empate: quem foi designado há mais tempo vem primeiro
+    const la = lastAssignedAny(a.id);
+    const lb = lastAssignedAny(b.id);
+    if(la!==lb) return la-lb; // menor índice = mais antigo = prioridade
+    return a.name.localeCompare(b.name,'pt-BR');
   });
 
   return pool[0].id;
@@ -2091,7 +2284,8 @@ const ASSIGN_ORDER = [
   'FSM3_DUPLA_SP',
   'NVC1_NOME',
   'NVC2_NOME',
-  'EBC_DUPLA',
+  'EBC_DIRIGENTE',
+  'EBC_LEITOR',
   'ORACAO_FINAL',
 ];
 
@@ -2112,7 +2306,7 @@ function sugerirDesignacoes(){
       const part = PARTS.find(p=>p.tag===tag);
       if(!part) continue;
       // Pula EBC em semana de visita do Superintendente
-      if(tag==='EBC_DUPLA' && w._eventoTipo==='visit') continue;
+      if((tag==='EBC_DIRIGENTE'||tag==='EBC_LEITOR') && w._eventoTipo==='visit') continue;
       // Pula semana cancelada por evento
       if(w._eventoTipo==='cancel') continue;
 
@@ -2201,6 +2395,7 @@ function checkPassword(){
 }
 
 document.addEventListener('DOMContentLoaded',()=>{
+  applyTheme();
   // Verifica se já autenticou nesta sessão
   if(sessionStorage.getItem('s140-auth')=='1'){
     document.getElementById('lock-screen').style.display='none';
