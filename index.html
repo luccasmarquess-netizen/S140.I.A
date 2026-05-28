@@ -1250,101 +1250,62 @@ async function fetchViaWorker(targetUrl){
   return parsed;
 }
 
-// Parser do HTML do jw.org/pt e wol.jw.org
-// O wol.jw.org retorna HTML com conteúdo embutido em elementos específicos.
-// O jw.org/pt usa estrutura semelhante mas com mais JavaScript.
+// Parser do HTML do jw.org/pt
+// Estrutura: seções em <h2>, partes em <h3 id="pN">N. Título</h3>
+// Duração em <p id="pN+1">(X min)</p> logo após o título
 function parseJwHtml(raw){
-  // ── Pré-processamento ──
-  // Remove scripts e styles mas mantém o HTML para busca por classes
   const noScript = raw
     .replace(/<script[\s\S]*?<\/script>/gi,'')
     .replace(/<style[\s\S]*?<\/style>/gi,'');
 
-  // Converte entidades
-  const decode = s => s
-    .replace(/&amp;/gi,'&').replace(/&nbsp;/gi,' ')
-    .replace(/&lt;/gi,'<').replace(/&gt;/gi,'>')
-    .replace(/&#(\d+);/g,(m,n)=>String.fromCharCode(parseInt(n)))
-    .replace(/&[a-z]+;/gi,' ');
-
-  // Texto limpo
-  const txt = decode(noScript.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ')).trim();
-
-  // ── Cânticos ──
-  // wol.jw.org: "Cântico 138 e oração" ou "Cântico 138"
-  // Procura todos os números após "Cântico"
+  // Cânticos
   const songRx = /[Cc]ântico\s+(\d+)/g;
   const songs=[]; let sm;
-  while((sm=songRx.exec(txt))!==null) songs.push(sm[1]);
+  while((sm=songRx.exec(noScript))!==null) songs.push(sm[1]);
   const uniqSongs=[...new Set(songs)];
 
-  // ── Estratégia de parsing por seção ──
-  // Divide o texto pelas 3 seções principais
-  const SEP_TESOURO = /TESOUROS\s+DA\s+PALAVRA\s+DE\s+DEUS/i;
-  const SEP_FSM     = /FA[ÇC]A\s+SEU\s+MELHOR\s+NO\s+MINIST[ÉE]RIO/i;
-  const SEP_NVC     = /NOSSA\s+VIDA\s+CRIST[ÃA]/i;
+  // Posições das seções
+  function findIdx(rx){ const m=rx.exec(noScript); return m?m.index:Infinity; }
+  const idxT = findIdx(/TESOUROS\s+DA\s+PALAVRA\s+DE\s+DEUS/i);
+  const idxF = findIdx(/FA[ÇC]A\s+SEU\s+MELHOR\s+NO\s+MINIST[ÉE]RIO/i);
+  const idxN = findIdx(/NOSSA\s+VIDA\s+CRIST[ÃA]/i);
 
-  function splitAt(text, rx){
-    const m = rx.exec(text);
-    return m ? [text.slice(0, m.index), text.slice(m.index)] : [text, ''];
-  }
-
-  const [before_tesouro, from_tesouro] = splitAt(txt, SEP_TESOURO);
-  const [tesouro_block,  from_fsm]     = splitAt(from_tesouro, SEP_FSM);
-  const [fsm_block,      nvc_block]    = splitAt(from_fsm,     SEP_NVC);
-
-  // ── Extrai partes numeradas de um bloco ──
-  // Padrão: "N. Título da parte (X min.)"
+  // Extrai partes de um bloco HTML usando <h3>N. Título</h3> + duração próxima
   function extractParts(block){
-    const parts = [];
-    // Padrão principal: número + ponto + título + duração em parênteses
-    const rx = /\b(\d{1,2})\.\s+([^(]{3,100}?)\s*\((\d{1,2})\s*min/g;
+    const parts=[];
+    const h3Rx=/<h3[^>]*>\s*(\d{1,2})\.\s*([\s\S]{3,150}?)\s*<\/h3>/gi;
     let m;
-    while((m=rx.exec(block))!==null){
-      const title = m[2].replace(/\s+/g,' ').trim();
-      // Filtra títulos que parecem ser referências bíblicas ou lixo
-      if(title.length > 3 && !/^\d+$/.test(title)){
-        parts.push({num:parseInt(m[1]), title, dur:m[3]});
-      }
+    while((m=h3Rx.exec(block))!==null){
+      const num=parseInt(m[1]);
+      // Limpa HTML interno do título
+      const title=m[2].replace(/<[^>]+>/g,'').replace(/&amp;/g,'&').replace(/&#(\d+);/g,(_,n)=>String.fromCharCode(n)).replace(/&[a-z]+;/gi,' ').replace(/\s+/g,' ').trim();
+      if(!title||title.length<3) continue;
+      // Busca duração nos 600 chars após o h3
+      const after=block.slice(m.index+m[0].length, m.index+m[0].length+600);
+      const durM=/\((\d{1,2})\s*min/i.exec(after);
+      parts.push({num, title, dur: durM?durM[1]:''});
     }
     return parts;
   }
 
-  const tesouroParts = extractParts(tesouro_block || txt.slice(0, txt.length/3));
-  const fsmParts     = extractParts(fsm_block);
-  const nvcParts     = extractParts(nvc_block);
+  const tHtml = idxT<Infinity ? (idxF<Infinity ? noScript.slice(idxT,idxF) : noScript.slice(idxT)) : '';
+  const fHtml = idxF<Infinity ? (idxN<Infinity ? noScript.slice(idxF,idxN) : noScript.slice(idxF)) : '';
+  const nHtml = idxN<Infinity ? noScript.slice(idxN) : '';
 
-  // ── Tema do discurso de Tesouros (parte 1 dos Tesouros) ──
-  // No wol.jw.org aparece como o título do discurso principal
-  // Padrão adicional: busca por título de artigo antes da primeira parte numerada
-  let tesouroTema = tesouroParts[0]?.title || '';
+  const tParts = extractParts(tHtml);
+  const fParts = extractParts(fHtml);
+  const nParts = extractParts(nHtml);
 
-  // Se não achou por partes numeradas, tenta outro padrão:
-  // "10 min." seguido de título ou título seguido de "(10 min.)"
-  if(!tesouroTema && tesouro_block){
-    const m2 = /\.\s*([A-ZÀ-Ú][^.!?]{10,80}?)\s*\(10\s*min/i.exec(tesouro_block);
-    if(m2) tesouroTema = m2[1].trim();
-  }
-
-  // ── Referência de leitura ──
-  const leituraRef = (()=>{
-    const block = tesouro_block || txt;
-    // Busca "Leitura da Bíblia" seguida de referência
-    const lr = /[Ll]eitura\s+da\s+[Bb][íi]blia[^(]*\(\s*4\s*min[^)]*\)[^A-Z]{0,30}([A-Za-zÀ-ú]{2,4}\s+\d+:\d+[-\d,\s]*)/;
-    const lm = lr.exec(block);
-    return lm ? lm[1].trim() : '';
-  })();
-
-  // ── Resultado ──
-  const ok = uniqSongs.length > 0 || fsmParts.length > 0 || nvcParts.length > 0 || !!tesouroTema;
+  const tesouroTema = tParts[0]?.title||'';
+  const ok = uniqSongs.length>0||fParts.length>0||nParts.length>0||!!tesouroTema;
 
   return {
     ok,
     songs: uniqSongs,
     tesouroTema,
-    leituraRef,
-    fsm: fsmParts.slice(0,3).map(p=>({tema:p.title, dur:p.dur})),
-    nvc: nvcParts.slice(0,2).map(p=>({tema:p.title, dur:p.dur})),
+    leituraRef: '',
+    fsm: fParts.slice(0,3).map(p=>({tema:p.title,dur:p.dur})),
+    nvc: nParts.slice(0,2).map(p=>({tema:p.title,dur:p.dur})),
   };
 }
 
