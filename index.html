@@ -1186,25 +1186,28 @@ async function searchApostila(){
 // Dois formatos possíveis:
 // - Semana dentro do mês:  para-1-7-de-junho-de-2026
 // - Semana que cruza mês:  para-29-de-junho-5-de-julho-de-2026
+// IMPORTANTE: semana que cruza mês usa o bimestre do mês SEGUINTE
 async function fetchWeekPage(month, year, dayStart, dayEnd){
-  const slug = bimestreSlug(month, year);
   const mName = MONTHS_PT[month];
-
-  // Verifica se a semana cruza para o mês seguinte
   const lastDayOfMonth = new Date(year, month, 0).getDate();
-  let weekSlug;
+
+  let weekSlug, slugMonth, slugYear;
   if(dayEnd > lastDayOfMonth){
-    // Semana cruza mês: "para-29-de-junho-5-de-julho-de-2026"
+    // Semana cruza mês — bimestre e slug usam o mês seguinte
     const nextMonth = month === 12 ? 1 : month + 1;
     const nextYear  = month === 12 ? year + 1 : year;
     const nextMName = MONTHS_PT[nextMonth];
     const dayEndNext = dayEnd - lastDayOfMonth;
+    slugMonth = nextMonth;
+    slugYear  = nextYear;
     weekSlug = `Programação-da-Reunião-Vida-e-Ministério-para-${dayStart}-de-${mName}-${dayEndNext}-de-${nextMName}-de-${nextYear}`;
   } else {
-    // Semana dentro do mês: "para-1-7-de-junho-de-2026"
+    slugMonth = month;
+    slugYear  = year;
     weekSlug = `Programação-da-Reunião-Vida-e-Ministério-para-${dayStart}-${dayEnd}-de-${mName}-de-${year}`;
   }
 
+  const slug = bimestreSlug(slugMonth, slugYear);
   const url = `https://www.jw.org/pt/biblioteca/jw-apostila-do-mes/${slug}/${weekSlug}/`;
   return await fetchViaWorker(url);
 }
