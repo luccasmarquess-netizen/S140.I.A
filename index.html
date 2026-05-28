@@ -1139,22 +1139,6 @@ async function searchApostila(){
     setImStatus(`Encontradas ${mondays.length} semana(s). Buscando dados…`,'loading');
 
     const weeks = [];
-    // DEBUG: imprime HTML da primeira semana no console
-    if(mondays.length > 0){
-      const dm = mondays[0];
-      try{
-        const slug = bimestreSlug(month, year);
-        const mName = MONTHS_PT[month];
-        const weekSlug = `Programação-da-Reunião-Vida-e-Ministério-para-${dm.day}-${dm.endDay}-de-${mName}-de-${year}`;
-        const dbgUrl = `https://www.jw.org/pt/biblioteca/jw-apostila-do-mes/${slug}/${weekSlug}/`;
-        const workerUrl = `${PROXY_URL}?url=${encodeURIComponent(dbgUrl)}`;
-        const dbgR = await fetch(workerUrl, {signal:AbortSignal.timeout(15000)});
-        const dbgD = await dbgR.json();
-        console.log('[DEBUG HTML semana 1 - chars 3000-6000]:', dbgD.contents?.slice(3000,6000));
-        console.log('[DEBUG HTML semana 1 - chars 6000-9000]:', dbgD.contents?.slice(6000,9000));
-        console.log('[DEBUG HTML semana 1 - chars 9000-12000]:', dbgD.contents?.slice(9000,12000));
-      }catch(dbgE){console.warn('debug erro:', dbgE.message);}
-    }
     for(let i=0; i<mondays.length; i++){
       const m = mondays[i];
       setImStatus(`Carregando semana ${i+1}/${mondays.length}: ${m.label}…`,'loading');
@@ -1199,12 +1183,28 @@ async function searchApostila(){
 
 // Busca via wol.jw.org API de data (PT-BR = r5/lp-t)
 // Busca a página de uma semana específica no jw.org/pt
-// URL real: /pt/biblioteca/jw-apostila-do-mes/{bimestre}-mwb/Programação-da-Reunião-Vida-e-Ministério-para-{d1}-{d2}-de-{mês}-de-{ano}/
+// Dois formatos possíveis:
+// - Semana dentro do mês:  para-1-7-de-junho-de-2026
+// - Semana que cruza mês:  para-29-de-junho-5-de-julho-de-2026
 async function fetchWeekPage(month, year, dayStart, dayEnd){
   const slug = bimestreSlug(month, year);
   const mName = MONTHS_PT[month];
-  // O jw.org usa acentos no slug e inclui "para" antes da data
-  const weekSlug = `Programação-da-Reunião-Vida-e-Ministério-para-${dayStart}-${dayEnd}-de-${mName}-de-${year}`;
+
+  // Verifica se a semana cruza para o mês seguinte
+  const lastDayOfMonth = new Date(year, month, 0).getDate();
+  let weekSlug;
+  if(dayEnd > lastDayOfMonth){
+    // Semana cruza mês: "para-29-de-junho-5-de-julho-de-2026"
+    const nextMonth = month === 12 ? 1 : month + 1;
+    const nextYear  = month === 12 ? year + 1 : year;
+    const nextMName = MONTHS_PT[nextMonth];
+    const dayEndNext = dayEnd - lastDayOfMonth;
+    weekSlug = `Programação-da-Reunião-Vida-e-Ministério-para-${dayStart}-de-${mName}-${dayEndNext}-de-${nextMName}-de-${nextYear}`;
+  } else {
+    // Semana dentro do mês: "para-1-7-de-junho-de-2026"
+    weekSlug = `Programação-da-Reunião-Vida-e-Ministério-para-${dayStart}-${dayEnd}-de-${mName}-de-${year}`;
+  }
+
   const url = `https://www.jw.org/pt/biblioteca/jw-apostila-do-mes/${slug}/${weekSlug}/`;
   return await fetchViaWorker(url);
 }
@@ -1337,18 +1337,6 @@ function parseJwHtml(raw){
 
   // ── Resultado ──
   const ok = uniqSongs.length > 0 || fsmParts.length > 0 || nvcParts.length > 0 || !!tesouroTema;
-
-  // Debug no console do navegador
-  console.log('[S140 Parser]', {
-    songs: uniqSongs,
-    tesouroTema,
-    fsmParts,
-    nvcParts,
-    ok,
-    tesouro_block_len: tesouro_block?.length,
-    fsm_block_len: fsm_block?.length,
-    nvc_block_len: nvc_block?.length,
-  });
 
   return {
     ok,
