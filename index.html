@@ -1239,15 +1239,16 @@ async function fetchViaWorker(targetUrl){
   if(!PROXY_URL || PROXY_URL.includes('SEU-USUARIO')){
     throw new Error('Configure a URL do Cloudflare Worker (constante PROXY_URL).');
   }
-  const workerUrl = `${PROXY_URL}?url=${encodeURIComponent(targetUrl)}`;
+  // Garante que acentos e caracteres especiais na URL sejam encodados
+  // encodeURI preserva a estrutura da URL mas encoda acentos como %C3%A7 etc.
+  const safeUrl = encodeURI(decodeURI(targetUrl));
+  const workerUrl = `${PROXY_URL}?url=${encodeURIComponent(safeUrl)}`;
   const r = await fetch(workerUrl, {signal:AbortSignal.timeout(15000)});
   if(!r.ok) throw new Error('Worker HTTP '+r.status);
   const d = await r.json();
   if(d.error) throw new Error('Worker: '+d.error);
   if(!d.contents || d.contents.length < 200) throw new Error('Resposta vazia');
-  const parsed = parseJwHtml(d.contents);
-  parsed.rawHtml = d.contents; // guarda HTML bruto para debug
-  return parsed;
+  return parseJwHtml(d.contents);
 }
 
 // Parser do HTML do jw.org/pt
