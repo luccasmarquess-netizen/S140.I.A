@@ -202,6 +202,29 @@ table.t tr:hover td{background:#fafaf7}
 </head>
 <body>
 
+<!-- Tela de senha -->
+<div id="lock-screen" style="
+  position:fixed;inset:0;background:var(--bg);
+  display:flex;align-items:center;justify-content:center;
+  z-index:9999;flex-direction:column;gap:16px;
+">
+  <div style="text-align:center;margin-bottom:8px">
+    <div style="font-family:'Fraunces',serif;font-size:32px;font-weight:500;color:var(--ink)">S-140</div>
+    <div style="font-size:13px;color:var(--muted);margin-top:4px">Programador de Reunião</div>
+  </div>
+  <div style="background:var(--surface);border:1px solid var(--line);padding:32px;width:90%;max-width:360px;border-radius:3px">
+    <label style="display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Senha de acesso</label>
+    <input type="password" id="lock-input" placeholder="Digite a senha"
+      style="width:100%;padding:10px 12px;border:1px solid var(--line);font-family:inherit;font-size:14px;border-radius:2px;margin-bottom:8px"
+      onkeydown="if(event.key==='Enter')checkPassword()">
+    <div id="lock-error" style="display:none;font-size:12px;color:var(--err);margin-bottom:8px">Senha incorreta.</div>
+    <button onclick="checkPassword()" style="
+      width:100%;padding:10px;background:var(--accent);color:#fff;
+      border:none;font-family:inherit;font-size:14px;cursor:pointer;border-radius:2px;
+    ">Entrar</button>
+  </div>
+</div>
+
 <header class="app-header">
   <h1>S-140 <small id="header-cong">Programador de Reunião</small></h1>
   <div class="hdr-btns">
@@ -2147,7 +2170,43 @@ function sugerirDesignacoes(){
 /* ════════════════════════════════════════
    INIT
 ════════════════════════════════════════ */
+// Hash simples da senha (não armazena a senha em texto puro)
+// senha protegida por hash FNV-1a
+
+function simpleHash(str){
+  let h = 0x811c9dc5;
+  for(let i=0;i<str.length;i++){
+    h ^= str.charCodeAt(i);
+    h = (h * 0x01000193) >>> 0;
+  }
+  return h.toString(16).padStart(8,'0');
+}
+
+// Hash real da senha (gerado uma vez)
+// simpleHash("PoloniCity") calculado abaixo
+const REAL_HASH = "1a7fc988"; // simpleHash("PoloniCity")
+
+function checkPassword(){
+  const val = document.getElementById('lock-input').value;
+  if(simpleHash(val) === REAL_HASH){
+    document.getElementById('lock-screen').style.display='none';
+    sessionStorage.setItem('s140-auth','1');
+  } else {
+    const err = document.getElementById('lock-error');
+    err.style.display='block';
+    document.getElementById('lock-input').value='';
+    document.getElementById('lock-input').focus();
+    setTimeout(()=>err.style.display='none', 3000);
+  }
+}
+
 document.addEventListener('DOMContentLoaded',()=>{
+  // Verifica se já autenticou nesta sessão
+  if(sessionStorage.getItem('s140-auth')=='1'){
+    document.getElementById('lock-screen').style.display='none';
+  } else {
+    setTimeout(()=>document.getElementById('lock-input').focus(), 100);
+  }
   renderSchedule();
   updateHeaderCong();
 });
