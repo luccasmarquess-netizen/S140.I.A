@@ -457,7 +457,7 @@ const PARTS = [
   {tag:'H_FSM1',           label:'Horário FSM 1',           type:'time',   section:'Faça Seu Melhor no Ministério'},
   {tag:'FSM1_TEMA',        label:'Tema FSM 1',              type:'text',   section:'Faça Seu Melhor no Ministério'},
   {tag:'FSM1_DUR',         label:'Min',                     type:'dur',    section:'Faça Seu Melhor no Ministério'},
-  {tag:'FSM1_PRESIDENTE_SP',label:'Designado FSM 1',        type:'person', elig:'allMen', restrict:'fsm', section:'Faça Seu Melhor no Ministério'},
+  {tag:'FSM1_DUPLA_SP',     label:'FSM 1 — Estudante / Ajudante', type:'pair', elig:'any', restrict:'fsm', section:'Faça Seu Melhor no Ministério'},
   {tag:'H_FSM2',           label:'Horário FSM 2',           type:'time',   section:'Faça Seu Melhor no Ministério'},
   {tag:'FSM2_TEMA',        label:'Tema FSM 2',              type:'text',   section:'Faça Seu Melhor no Ministério'},
   {tag:'FSM2_DUR',         label:'Min',                     type:'dur',    section:'Faça Seu Melhor no Ministério'},
@@ -779,7 +779,7 @@ function buildWeekPanel(n){
   </div>
 
   <div class="section"><h3>Faça Seu Melhor no Ministério</h3>
-    <div class="row r-fsm">${fld('H_FSM1')}${fld('FSM1_TEMA')}${fld('FSM1_DUR')}${fld('FSM1_PRESIDENTE_SP')}</div>
+    <div class="row r-fsm">${fld('H_FSM1')}${fld('FSM1_TEMA')}${fld('FSM1_DUR')}${fld('FSM1_DUPLA_SP')}</div>
     <div class="row r-fsm">${fld('H_FSM2')}${fld('FSM2_TEMA')}${fld('FSM2_DUR')}${fld('FSM2_DUPLA_SP')}</div>
     <div class="row r-fsm">${fld('H_FSM3')}${fld('FSM3_TEMA')}${fld('FSM3_DUR')}${fld('FSM3_DUPLA_SP')}</div>
     <div style="font-size:11px;color:var(--muted);margin-top:4px">Colunas: Horário · Tema · Min · Designado</div>
@@ -1606,7 +1606,9 @@ async function generateDocx(){
     for(let n=1;n<=5;n++){
       const w=state.weeks[n-1];
       for(const part of PARTS){
-        const tag=`S${n}_${part.tag}`;
+        // Mapeia tags renomeadas para compatibilidade com o template docx
+        const templateTag = part.tag==='FSM1_DUPLA_SP' ? 'FSM1_PRESIDENTE_SP' : part.tag;
+        const tag=`S${n}_${templateTag}`;
         let val='';
         if(part.type==='person') val=personName(w[part.tag]);
         else if(part.type==='pair') val=pairName(w[part.tag]);
