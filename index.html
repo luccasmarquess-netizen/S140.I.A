@@ -1069,7 +1069,8 @@ const PROXY_URL = 'https://throbbing-heart-4ebc.luccasmarquess.workers.dev';
 // Par de meses bimestral (jan+fev=1, mar+abr=3, etc.)
 function bimestre(m){ return m%2===1?m:m-1; }
 function bimestreSlug(m,y){
-  const a=bimestre(m), b=Math.min(a+1,12);
+  // Retorna o slug do bimestre conforme jw.org/pt
+  // Ex: maio-junho-2026-mwb
   const slugs={
     1:'janeiro-fevereiro',2:'janeiro-fevereiro',
     3:'marco-abril',4:'marco-abril',
@@ -1078,7 +1079,7 @@ function bimestreSlug(m,y){
     9:'setembro-outubro',10:'setembro-outubro',
     11:'novembro-dezembro',12:'novembro-dezembro'
   };
-  return `apostila-${slugs[m]}-${y}-mwb`;
+  return `${slugs[m]}-${y}-mwb`;
 }
 
 // Datas de segundas-feiras do mês
@@ -1144,8 +1145,8 @@ async function searchApostila(){
       try{
         const slug = bimestreSlug(month, year);
         const mName = MONTHS_PT[month];
-        const weekSlug = `Programacao-da-Reuniao-Vida-e-Ministerio-${dm.day}-${dm.endDay}-de-${mName}-de-${year}`;
-        const dbgUrl = `https://www.jw.org/pt/biblioteca/apostila-reuniao-vida-e-ministerio/${slug}/${weekSlug}/`;
+        const weekSlug = `Programação-da-Reunião-Vida-e-Ministério-para-${dm.day}-${dm.endDay}-de-${mName}-de-${year}`;
+        const dbgUrl = `https://www.jw.org/pt/biblioteca/jw-apostila-do-mes/${slug}/${weekSlug}/`;
         const workerUrl = `${PROXY_URL}?url=${encodeURIComponent(dbgUrl)}`;
         const dbgR = await fetch(workerUrl, {signal:AbortSignal.timeout(15000)});
         const dbgD = await dbgR.json();
@@ -1198,14 +1199,13 @@ async function searchApostila(){
 
 // Busca via wol.jw.org API de data (PT-BR = r5/lp-t)
 // Busca a página de uma semana específica no jw.org/pt
-// Tenta construir a URL pelo padrão e fallback por índice
+// URL real: /pt/biblioteca/jw-apostila-do-mes/{bimestre}-mwb/Programação-da-Reunião-Vida-e-Ministério-para-{d1}-{d2}-de-{mês}-de-{ano}/
 async function fetchWeekPage(month, year, dayStart, dayEnd){
   const slug = bimestreSlug(month, year);
   const mName = MONTHS_PT[month];
-
-  // Padrão principal: slug com dia início e fim
-  const weekSlug = `Programacao-da-Reuniao-Vida-e-Ministerio-${dayStart}-${dayEnd}-de-${mName}-de-${year}`;
-  const url = `https://www.jw.org/pt/biblioteca/apostila-reuniao-vida-e-ministerio/${slug}/${weekSlug}/`;
+  // O jw.org usa acentos no slug e inclui "para" antes da data
+  const weekSlug = `Programação-da-Reunião-Vida-e-Ministério-para-${dayStart}-${dayEnd}-de-${mName}-de-${year}`;
+  const url = `https://www.jw.org/pt/biblioteca/jw-apostila-do-mes/${slug}/${weekSlug}/`;
   return await fetchViaWorker(url);
 }
 
