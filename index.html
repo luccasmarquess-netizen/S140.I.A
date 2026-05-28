@@ -141,8 +141,8 @@ table.t tr:hover td{background:#fafaf7}
 .avail-cell.off{background:#fee;border-color:#f99;color:var(--err)}
 .avail-cell:hover{border-color:var(--accent)}
 .restrict-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
-.restrict-tag{padding:3px 8px;border:1px solid var(--line);border-radius:10px;font-size:11px;cursor:pointer;transition:all .15s}
-.restrict-tag.on{background:#fee;border-color:#f99;color:var(--err)}
+.restrict-tag{padding:3px 8px;border:1px solid var(--line);border-radius:10px;font-size:11px;cursor:pointer;transition:all .15s;color:var(--muted)}
+.restrict-tag.on{background:#ebf0e7;border-color:var(--servant);color:var(--servant);font-weight:500}
 
 /* ── VALIDATION PANEL ── */
 .val-panel{background:var(--surface);border:1px solid var(--line);margin-bottom:20px;border-left:3px solid var(--warn)}
@@ -225,6 +225,7 @@ table.t tr:hover td{background:#fafaf7}
   <div class="week-bar">
     <div class="week-tabs" id="week-tabs"></div>
     <button class="btn ghost sm" onclick="recalcTimes()">⏱ Recalcular horários</button>
+    <button class="btn sm" onclick="sugerirDesignacoes()" style="background:var(--servant);border-color:var(--servant)">✨ Sugerir designações</button>
     <button class="btn ghost sm" onclick="clearWeek()">🗑 Limpar semana</button>
   </div>
   <div id="weeks-container"></div>
@@ -344,7 +345,7 @@ table.t tr:hover td{background:#fafaf7}
     </div>
   </div>
   <div class="form-row">
-    <label>Partes que não faz (clique para restringir)</label>
+    <label>Partes que pode fazer (clique para habilitar)</label>
     <div class="restrict-list" id="pm-restrict"></div>
   </div>
   <div class="actions">
@@ -424,22 +425,23 @@ const ELIG = {
 };
 
 // Partes restringíveis (para ficha de pessoa)
+// Habilitações: o que cada pessoa PODE fazer (opt-in)
 const RESTRICT_PARTS = [
-  {key:'oração',  label:'Oração'},
-  {key:'leitura', label:'Leitura da Bíblia'},
-  {key:'tesouros',label:'Tesouros (discurso)'},
-  {key:'joias',   label:'Joias espirituais'},
-  {key:'fsm',     label:'Faça Seu Melhor'},
-  {key:'nvc',     label:'Nossa Vida Cristã'},
-  {key:'ebc',     label:'EBC (dirigente/leitor)'},
-  {key:'presidente',label:'Presidente'},
+  {key:'presidente', label:'Presidente'},
+  {key:'oração',     label:'Oração'},
+  {key:'tesouros',   label:'Tesouros (discurso)'},
+  {key:'joias',      label:'Joias espirituais'},
+  {key:'leitura',    label:'Leitura da Bíblia'},
+  {key:'fsm',        label:'Faça Seu Melhor'},
+  {key:'nvc',        label:'Nossa Vida Cristã'},
+  {key:'ebc',        label:'EBC (dirigente/leitor)'},
 ];
 
 // Definição das partes da reunião (por semana)
 const PARTS = [
   // Cabeçalho
   {tag:'DATA',             label:'Data da semana',          type:'date',   section:'Cabeçalho'},
-  {tag:'PRESIDENTE',       label:'Presidente',              type:'person', elig:'eldersOnly',     restrict:'presidente', section:'Cabeçalho'},
+  {tag:'PRESIDENTE',       label:'Presidente',              type:'person', elig:'eldersServants', restrict:'presidente', section:'Cabeçalho'},
   // Abertura
   {tag:'H_CANTICO1',       label:'Horário',                 type:'time',   section:'Abertura'},
   {tag:'N_CANTICO1',       label:'Nº cântico abertura',     type:'text',   section:'Abertura'},
@@ -472,11 +474,11 @@ const PARTS = [
   {tag:'H_NVC1',           label:'Horário NVC 1',           type:'time',   section:'Nossa Vida Cristã'},
   {tag:'NVC1_TEMA',        label:'Tema NVC 1',              type:'text',   section:'Nossa Vida Cristã'},
   {tag:'NVC1_DUR',         label:'Min',                     type:'dur',    section:'Nossa Vida Cristã'},
-  {tag:'NVC1_NOME',        label:'Designado NVC 1',         type:'person', elig:'eldersOnly', restrict:'nvc', section:'Nossa Vida Cristã'},
+  {tag:'NVC1_NOME',        label:'Designado NVC 1',         type:'person', elig:'eldersServants', restrict:'nvc', section:'Nossa Vida Cristã'},
   {tag:'H_NVC2',           label:'Horário NVC 2',           type:'time',   section:'Nossa Vida Cristã'},
   {tag:'NVC2_TEMA',        label:'Tema NVC 2',              type:'text',   section:'Nossa Vida Cristã'},
   {tag:'NVC2_DUR',         label:'Min',                     type:'dur',    section:'Nossa Vida Cristã'},
-  {tag:'NVC2_NOME',        label:'Designado NVC 2',         type:'person', elig:'eldersOnly', restrict:'nvc', section:'Nossa Vida Cristã'},
+  {tag:'NVC2_NOME',        label:'Designado NVC 2',         type:'person', elig:'eldersServants', restrict:'nvc', section:'Nossa Vida Cristã'},
   {tag:'H_EBC',            label:'Horário EBC',             type:'time',   section:'Nossa Vida Cristã'},
   {tag:'EBC_DUPLA',        label:'EBC — Dirigente / Leitor',type:'pair',   elig:'eldersServants', restrict:'ebc', section:'Nossa Vida Cristã'},
   {tag:'H_COMENT_FINAIS',  label:'Horário com. finais',     type:'time',   dur:3, section:'Nossa Vida Cristã'},
@@ -870,7 +872,11 @@ function togglePicker(id,n,tag,pairKey){
 function fillPicker(pickerEl,n,tag,pairKey){
   const part=PARTS.find(p=>p.tag===tag);
   const pool=eligible(part,n).filter(p=>{
-    if(part.restrict && (p.restrict||[]).includes(part.restrict)) return false;
+    const abilities = p.restrict||[]; // "restrict" agora armazena habilitações
+    // Se não tem nenhuma habilitação definida → pode fazer tudo (retrocompatibilidade)
+    if(abilities.length === 0) return true;
+    // Se tem habilitações, só aparece se a parte estiver habilitada
+    if(part.restrict && !abilities.includes(part.restrict)) return false;
     return true;
   });
   pool.sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
@@ -880,10 +886,8 @@ function fillPicker(pickerEl,n,tag,pairKey){
   const groups={elder:[],servant:[],publisher:[],female:[]};
   for(const p of pool) groups[p.role].push(p);
 
-  // Pessoas restritas (têm a parte em restrict mas são elegíveis)
-  const restricted=eligible(part,n).filter(p=>
-    part.restrict && (p.restrict||[]).includes(part.restrict)
-  );
+  // Com opt-in não há grupo "restritos" — pessoas sem habilitação não aparecem
+  const restricted=[];
 
   const dd=pickerEl.querySelector('.picker-dropdown');
   let html=`<div class="picker-search"><input type="text" placeholder="Buscar..." oninput="filterPicker(this,'${pickerEl.id}')"></div>`;
@@ -1035,13 +1039,13 @@ function renderPeople(){
   if(!list.length){tb.innerHTML='<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--muted)">Nenhuma pessoa encontrada.</td></tr>';return;}
   tb.innerHTML=list.map(p=>{
     const unavailStr=p.unavail?.length ? p.unavail.map(w=>'S'+(w+1)).join(', ') : '—';
-    const restrictStr=p.restrict?.length ? p.restrict.map(r=>RESTRICT_PARTS.find(x=>x.key===r)?.label||r).join(', ') : '—';
+    const abilitiesStr=p.restrict?.length ? p.restrict.map(r=>RESTRICT_PARTS.find(x=>x.key===r)?.label||r).join(', ') : 'Todas';
     return `<tr>
       <td><strong>${esc(p.name)}</strong></td>
       <td><span class="tag ${ROLES[p.role].cls}">${ROLES[p.role].label}</span></td>
       <td>${p.reading?'✓':'—'}</td>
       <td>${p.talks?'✓':'—'}</td>
-      <td style="font-size:12px;color:var(--muted)">${unavailStr!=='—'?`<span style="color:var(--warn)">Indisponível: ${unavailStr}</span><br>`:''}${restrictStr!=='—'?`Restrições: ${restrictStr}`:''}</td>
+      <td style="font-size:12px;color:var(--muted)">${unavailStr!=='—'?`<span style="color:var(--warn)">Indisponível: ${unavailStr}</span><br>`:''}Habilitações: ${abilitiesStr}</td>
       <td style="text-align:right">
         <button class="icon-btn" onclick="openPersonModal('${p.id}')">✎</button>
         <button class="icon-btn danger" onclick="deletePerson('${p.id}')">×</button>
@@ -1670,6 +1674,219 @@ function toast(msg,err=false){
   const t=document.getElementById('toast');
   t.textContent=msg;t.classList.toggle('error',err);t.classList.add('show');
   clearTimeout(_tt);_tt=setTimeout(()=>t.classList.remove('show'),2800);
+}
+
+
+/* ════════════════════════════════════════
+   SUGESTÃO AUTOMÁTICA DE DESIGNAÇÕES
+════════════════════════════════════════ */
+
+// Retorna todas as designações já feitas no mês por pessoa
+// { personId: [{weekIdx, tag, section}] }
+function buildMonthHistory(){
+  const hist = {};
+  for(let n=0; n<5; n++){
+    const w = state.weeks[n];
+    for(const part of PARTS){
+      if(part.type==='person'){
+        const id = w[part.tag];
+        if(id){ if(!hist[id]) hist[id]=[]; hist[id].push({weekIdx:n, tag:part.tag, section:part.section}); }
+      }
+      if(part.type==='pair'){
+        for(const key of ['a','b']){
+          const id = w[part.tag]?.[key];
+          if(id){ if(!hist[id]) hist[id]=[]; hist[id].push({weekIdx:n, tag:part.tag, section:part.section}); }
+        }
+      }
+    }
+  }
+  return hist;
+}
+
+// Seção de cada tag (para regra "mesma semana ok se seção diferente")
+function sectionOf(tag){ return PARTS.find(p=>p.tag===tag)?.section||''; }
+
+// Verifica se pessoa pode ser designada para uma parte numa semana
+function canAssign(personId, tag, weekIdx, currentAssignments, monthHist){
+  const part = PARTS.find(p=>p.tag===tag);
+  if(!part) return false;
+
+  const person = state.people.find(p=>p.id===personId);
+  if(!person) return false;
+
+  // Verifica elegibilidade básica
+  const pool = eligible(part, weekIdx);
+  if(!pool.find(p=>p.id===personId)) return false;
+
+  // Verifica habilitação opt-in
+  const abilities = person.restrict||[];
+  if(abilities.length>0 && part.restrict && !abilities.includes(part.restrict)) return false;
+
+  const section = sectionOf(tag);
+  const role = person.role;
+  const isElderOrServant = role==='elder'||role==='servant';
+  const isPublisher = role==='publisher'||role==='female';
+
+  // ── Regras para anciãos e servos ──
+  if(isElderOrServant){
+    // 1. Não fazer duas partes CONSECUTIVAS na mesma semana
+    //    (mesma seção = consecutivas; seções diferentes = ok)
+    const thisWeekAssignments = currentAssignments[weekIdx]||[];
+    const sameSection = thisWeekAssignments.filter(a=>a.personId===personId && sectionOf(a.tag)===section);
+    if(sameSection.length>0) return false;
+
+    // 2. Não repetir a mesma parte na semana anterior ou posterior
+    const hist = monthHist[personId]||[];
+    const sameTagNearby = hist.filter(h=>
+      h.tag===tag && (h.weekIdx===weekIdx-1 || h.weekIdx===weekIdx+1)
+    );
+    if(sameTagNearby.length>0) return false;
+
+    // 3. Presidente: máximo 2x por mês, com intervalo mínimo de 2 semanas
+    if(tag==='PRESIDENTE'){
+      const prezHist = hist.filter(h=>h.tag==='PRESIDENTE');
+      if(prezHist.length>=2) return false;
+      // Intervalo mínimo de 2 semanas entre presidências
+      const tooClose = prezHist.some(h=>Math.abs(h.weekIdx-weekIdx)<=1);
+      if(tooClose) return false;
+    }
+  }
+
+  // ── Regras para publicadores ──
+  if(isPublisher){
+    // Intervalo mínimo de 2 semanas entre designações da mesma parte
+    const hist = monthHist[personId]||[];
+    const sameTagRecent = hist.filter(h=>
+      h.tag===tag && Math.abs(h.weekIdx-weekIdx)<=1
+    );
+    if(sameTagRecent.length>0) return false;
+
+    // Não fazer duas partes na mesma semana
+    const thisWeekAssignments = currentAssignments[weekIdx]||[];
+    if(thisWeekAssignments.find(a=>a.personId===personId)) return false;
+  }
+
+  return true;
+}
+
+// Conta designações totais de uma pessoa no mês (para balancear)
+function countMonth(personId, monthHist){
+  return (monthHist[personId]||[]).length;
+}
+
+// Escolhe a melhor pessoa para uma parte
+function choosePerson(tag, weekIdx, currentAssignments, monthHist, excludeIds=[]){
+  const part = PARTS.find(p=>p.tag===tag);
+  if(!part) return null;
+
+  const pool = eligible(part, weekIdx).filter(p=>{
+    if(excludeIds.includes(p.id)) return false;
+    const abilities = p.restrict||[];
+    if(abilities.length>0 && part.restrict && !abilities.includes(part.restrict)) return false;
+    return canAssign(p.id, tag, weekIdx, currentAssignments, monthHist);
+  });
+
+  if(!pool.length) return null;
+
+  // Ordena por quem fez menos no mês (balanceamento)
+  pool.sort((a,b)=>{
+    const ca = countMonth(a.id, monthHist);
+    const cb = countMonth(b.id, monthHist);
+    if(ca!==cb) return ca-cb;
+    // Empate: aleatoriza levemente
+    return Math.random()-0.5;
+  });
+
+  return pool[0].id;
+}
+
+// Regista uma designação no histórico temporário
+function registerAssignment(personId, tag, weekIdx, currentAssignments, monthHist){
+  if(!personId) return;
+  if(!currentAssignments[weekIdx]) currentAssignments[weekIdx]=[];
+  currentAssignments[weekIdx].push({personId, tag});
+  if(!monthHist[personId]) monthHist[personId]=[];
+  monthHist[personId].push({weekIdx, tag, section:sectionOf(tag)});
+}
+
+// Ordem de preenchimento por semana (partes person e pair, por prioridade)
+const ASSIGN_ORDER = [
+  'PRESIDENTE',
+  'ORACAO_INICIAL',
+  'TESOURO_NOME',
+  'JOIAS_NOME',
+  'LEITURA_SP',
+  'FSM1_DUPLA_SP',
+  'FSM2_DUPLA_SP',
+  'FSM3_DUPLA_SP',
+  'NVC1_NOME',
+  'NVC2_NOME',
+  'EBC_DUPLA',
+  'ORACAO_FINAL',
+];
+
+function sugerirDesignacoes(){
+  // Constrói histórico do mês COM as designações já feitas
+  const monthHist = buildMonthHistory();
+  // currentAssignments: o que foi designado NESTA rodada (por semana)
+  const currentAssignments = {};
+
+  let totalSugeridos = 0;
+
+  for(let n=0; n<5; n++){
+    const w = state.weeks[n];
+    // Pula semana sem data (provavelmente não usada)
+    if(!w.DATA && !w.N_CANTICO1) continue;
+
+    for(const tag of ASSIGN_ORDER){
+      const part = PARTS.find(p=>p.tag===tag);
+      if(!part) continue;
+
+      if(part.type==='person'){
+        // Só preenche se estiver vazio
+        if(w[tag]) continue;
+        const chosen = choosePerson(tag, n, currentAssignments, monthHist);
+        if(chosen){
+          w[tag] = chosen;
+          registerAssignment(chosen, tag, n, currentAssignments, monthHist);
+          totalSugeridos++;
+        }
+      }
+
+      if(part.type==='pair'){
+        const pair = w[tag] || {a:null, b:null};
+        // Estudante (a)
+        if(!pair.a){
+          const chosenA = choosePerson(tag, n, currentAssignments, monthHist);
+          if(chosenA){
+            if(!w[tag]) w[tag]={a:null,b:null};
+            w[tag].a = chosenA;
+            registerAssignment(chosenA, tag, n, currentAssignments, monthHist);
+            totalSugeridos++;
+          }
+        }
+        // Ajudante (b) — exclui quem foi escolhido para (a)
+        if(!pair.b){
+          const excludeA = w[tag]?.a ? [w[tag].a] : [];
+          const chosenB = choosePerson(tag, n, currentAssignments, monthHist, excludeA);
+          if(chosenB){
+            if(!w[tag]) w[tag]={a:null,b:null};
+            w[tag].b = chosenB;
+            registerAssignment(chosenB, tag, n, currentAssignments, monthHist);
+            totalSugeridos++;
+          }
+        }
+      }
+    }
+  }
+
+  save();
+  renderSchedule();
+  if(totalSugeridos>0){
+    toast(`✨ ${totalSugeridos} designação(ões) sugerida(s) — revise e ajuste conforme necessário`);
+  } else {
+    toast('Todos os campos já estão preenchidos', false);
+  }
 }
 
 /* ════════════════════════════════════════
