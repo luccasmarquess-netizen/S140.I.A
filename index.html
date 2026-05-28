@@ -271,6 +271,26 @@ table.t tr:hover td{background:#fafaf7}
     </p>
   </div>
   <div class="settings-card">
+    <h3>Eventos especiais</h3>
+    <p style="font-size:13px;color:var(--ink2);margin-bottom:14px">
+      Semanas com evento especial (Assembleia de Circuito, Congresso, etc.) são marcadas automaticamente
+      e não recebem programação. No documento gerado, aparece o nome do evento no lugar da programação.
+    </p>
+    <div id="events-list" style="margin-bottom:12px"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end">
+      <div>
+        <label style="display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Nome do evento</label>
+        <input type="text" id="ev-name" placeholder="Ex: Assembleia de Circuito">
+      </div>
+      <div>
+        <label style="display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Data (segunda-feira da semana)</label>
+        <input type="date" id="ev-date">
+      </div>
+      <button class="btn" onclick="addEvent()" style="align-self:end">+ Adicionar</button>
+    </div>
+  </div>
+
+  <div class="settings-card">
     <h3>Zona de risco</h3>
     <p style="font-size:13px;color:var(--ink2);margin-bottom:12px">Apaga todos os dados deste navegador.</p>
     <button class="btn danger" onclick="resetAll()">Apagar tudo</button>
@@ -557,6 +577,7 @@ function loadState(){
     if(!s.people) s.people=seedPeople();
     s.people = s.people.map(p=>({unavail:[],restrict:[],...p}));
     if(!s.startTime) s.startTime='19:00';
+    if(!s.events) s.events=[];
     return s;
   } catch(e){ return {congregacao:'',startTime:'19:00',people:seedPeople(),weeks:[emptyWeek(),emptyWeek(),emptyWeek(),emptyWeek(),emptyWeek()]}; }
 }
@@ -678,6 +699,7 @@ function switchView(name){
   if(name==='settings'){
     document.getElementById('cfg-cong').value=state.congregacao||'';
     document.getElementById('cfg-start').value=state.startTime||'19:00';
+    renderEventsList();
   }
 }
 function saveCfg(){
@@ -732,9 +754,25 @@ function clearWeek(){
   state.weeks[activeWeek]=emptyWeek();
   save();renderSchedule();toast('Semana limpa');
 }
+function clearEventWeek(n){
+  state.weeks[n]=emptyWeek();
+  save();renderSchedule();toast('Evento removido');
+}
 
 function buildWeekPanel(n){
   const fld=tag=>renderField(n,PARTS.find(p=>p.tag===tag));
+  const w=state.weeks[n];
+
+  // Semana de evento especial
+  if(w._evento){
+    return `
+    <div style="text-align:center;padding:48px 24px">
+      <div style="font-size:32px;margin-bottom:12px">📅</div>
+      <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:500;margin-bottom:8px">${esc(w._evento)}</div>
+      <div style="color:var(--muted);font-size:13px;margin-bottom:24px">${esc(w.DATA||'')} — Sem reunião do meio de semana</div>
+      <button class="btn ghost sm" onclick="clearEventWeek(${n})">✕ Remover evento desta semana</button>
+    </div>`;
+  }
 
   return `
   <div class="row r-head" style="margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--line)">
@@ -874,9 +912,29 @@ function fillPicker(pickerEl,n,tag,pairKey){
   const pool=eligible(part,n).filter(p=>{
     const abilities = p.restrict||[]; // "restrict" agora armazena habilitações
     // Se não tem nenhuma habilitação definida → pode fazer tudo (retrocompatibilidade)
-    if(abilities.length === 0) return true;
+    if(abilities.length === 0){
+      // Regra de gênero para ajudante (b) em duplas
+      if(pairKey==='b' && part.type==='pair'){
+        const studentId = state.weeks[n][part.tag]?.a;
+        const student = studentId ? state.people.find(x=>x.id===studentId) : null;
+        if(student){
+          const isFemale = r=>r==='female';
+          if(isFemale(student.role) !== isFemale(p.role)) return false;
+        }
+      }
+      return true;
+    }
     // Se tem habilitações, só aparece se a parte estiver habilitada
     if(part.restrict && !abilities.includes(part.restrict)) return false;
+    // Regra de gênero para ajudante (b) em duplas
+    if(pairKey==='b' && part.type==='pair'){
+      const studentId = state.weeks[n][part.tag]?.a;
+      const student = studentId ? state.people.find(x=>x.id===studentId) : null;
+      if(student){
+        const isFemale = r=>r==='female';
+        if(isFemale(student.role) !== isFemale(p.role)) return false;
+      }
+    }
     return true;
   });
   pool.sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
@@ -1154,6 +1212,13 @@ async function searchApostila(){
     const weeks = [];
     for(let i=0; i<mondays.length; i++){
       const m = mondays[i];
+      // Verifica se há evento especial nesta semana
+      const evento = getEventForWeek(m.year, m.month, m.day);
+      if(evento){
+        setImStatus(`Semana ${i+1}: ${evento.name} — pulando…`,'loading');
+        weeks.push({ok:true, isEvent:true, eventName:evento.name, dateLabel:m.label, songs:[], fsm:[], nvc:[]});
+        continue;
+      }
       setImStatus(`Carregando semana ${i+1}/${mondays.length}: ${m.label}…`,'loading');
       try {
         const wkData = await fetchWeekPage(month, year, m.day, m.endDay);
@@ -1429,6 +1494,15 @@ function applyApostila(){
     if(!wk.ok||i>=5) return;
     const w=state.weeks[i];
     if(wk.dateLabel) w.DATA=wk.dateLabel;
+    // Semana de evento especial: limpa tudo e marca
+    if(wk.isEvent){
+      const emptyW = emptyWeek();
+      Object.assign(w, emptyW);
+      w.DATA = wk.dateLabel;
+      w._evento = wk.eventName;
+      applied++;
+      return;
+    }
     if(wk.songs[0]) w.N_CANTICO1=wk.songs[0];
     if(wk.songs[1]) w.N_CANTICO2=wk.songs[1];
     if(wk.songs[2]) w.N_CANTICO3=wk.songs[2];
@@ -1677,6 +1751,63 @@ function toast(msg,err=false){
 }
 
 
+
+/* ════════════════════════════════════════
+   EVENTOS ESPECIAIS
+════════════════════════════════════════ */
+
+function renderEventsList(){
+  const el = document.getElementById('events-list');
+  if(!el) return;
+  const events = state.events||[];
+  if(!events.length){
+    el.innerHTML='<p style="font-size:13px;color:var(--muted);font-style:italic">Nenhum evento cadastrado.</p>';
+    return;
+  }
+  el.innerHTML = events.map((ev,i)=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#fafaf7;border:1px solid var(--line);border-radius:2px;margin-bottom:6px">
+      <span style="font-size:13px;flex:1"><strong>${esc(ev.name)}</strong> — ${esc(ev.date)}</span>
+      <button class="icon-btn danger" onclick="removeEvent(${i})">×</button>
+    </div>`).join('');
+}
+
+function addEvent(){
+  const name = document.getElementById('ev-name').value.trim();
+  const date = document.getElementById('ev-date').value;
+  if(!name||!date){ toast('Informe nome e data do evento',true); return; }
+  if(!state.events) state.events=[];
+  // Normaliza para segunda-feira da semana
+  const d = new Date(date+'T12:00:00');
+  const day = d.getDay();
+  const diff = day===0 ? -6 : 1-day; // ajusta para segunda
+  d.setDate(d.getDate()+diff);
+  const monday = d.toISOString().slice(0,10);
+  state.events.push({name, date:monday});
+  state.events.sort((a,b)=>a.date.localeCompare(b.date));
+  save();
+  renderEventsList();
+  document.getElementById('ev-name').value='';
+  document.getElementById('ev-date').value='';
+  toast('Evento adicionado');
+}
+
+function removeEvent(idx){
+  state.events.splice(idx,1);
+  save();
+  renderEventsList();
+}
+
+// Verifica se uma semana (segunda-feira) tem evento especial
+// Retorna o evento ou null
+function getEventForWeek(year, month, dayStart){
+  const events = state.events||[];
+  if(!events.length) return null;
+  // Monta a data da segunda-feira da semana
+  const d = new Date(year, month-1, dayStart);
+  const monday = d.toISOString().slice(0,10);
+  return events.find(ev=>ev.date===monday)||null;
+}
+
 /* ════════════════════════════════════════
    SUGESTÃO AUTOMÁTICA DE DESIGNAÇÕES
 ════════════════════════════════════════ */
@@ -1775,7 +1906,7 @@ function countMonth(personId, monthHist){
 }
 
 // Escolhe a melhor pessoa para uma parte
-function choosePerson(tag, weekIdx, currentAssignments, monthHist, excludeIds=[]){
+function choosePerson(tag, weekIdx, currentAssignments, monthHist, excludeIds=[], sameRole=null){
   const part = PARTS.find(p=>p.tag===tag);
   if(!part) return null;
 
@@ -1783,6 +1914,13 @@ function choosePerson(tag, weekIdx, currentAssignments, monthHist, excludeIds=[]
     if(excludeIds.includes(p.id)) return false;
     const abilities = p.restrict||[];
     if(abilities.length>0 && part.restrict && !abilities.includes(part.restrict)) return false;
+    // Regra de gênero: publicadoras só com publicadoras, publicadores só com publicadores
+    if(sameRole){
+      const isFemale = r => r==='female';
+      const pairFemale = isFemale(sameRole);
+      const thisFemale = isFemale(p.role);
+      if(pairFemale !== thisFemale) return false;
+    }
     return canAssign(p.id, tag, weekIdx, currentAssignments, monthHist);
   });
 
@@ -1865,10 +2003,14 @@ function sugerirDesignacoes(){
             totalSugeridos++;
           }
         }
-        // Ajudante (b) — exclui quem foi escolhido para (a)
+        // Ajudante (b) — mesmo gênero que estudante (a), exclui quem foi para (a)
         if(!pair.b){
           const excludeA = w[tag]?.a ? [w[tag].a] : [];
-          const chosenB = choosePerson(tag, n, currentAssignments, monthHist, excludeA);
+          // Descobre o role do estudante (a) para forçar mesmo gênero
+          const studentId = w[tag]?.a;
+          const studentPerson = studentId ? state.people.find(p=>p.id===studentId) : null;
+          const studentRole = studentPerson?.role || null;
+          const chosenB = choosePerson(tag, n, currentAssignments, monthHist, excludeA, studentRole);
           if(chosenB){
             if(!w[tag]) w[tag]={a:null,b:null};
             w[tag].b = chosenB;
