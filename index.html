@@ -310,6 +310,9 @@ table.t tr:hover td{background:#fafaf7}
       <option value="female">Publicadoras</option>
     </select>
     <div style="flex:1"></div>
+    <button class="btn ghost" onclick="document.getElementById('import-people-file').click()">📄 Importar .txt</button>
+    <input type="file" id="import-people-file" accept=".txt" style="display:none" onchange="importPeopleTxt(event)">
+    <button class="btn ghost" onclick="showTxtFormat()">❓ Formato</button>
     <button class="btn" onclick="openPersonModal()">+ Adicionar</button>
   </div>
   <table class="t">
@@ -2413,6 +2416,147 @@ function editGrupo(idx){
   if(membros===null) return;
   state.grupos[idx].membros = membros.split(',').map(s=>s.trim()).filter(Boolean);
   save(); renderLimpeza();
+}
+
+
+/* ════════════════════════════════════════
+   IMPORTAÇÃO DE PESSOAS VIA TXT
+════════════════════════════════════════ */
+
+// Mapa de aliases para os roles
+const ROLE_ALIASES = {
+  // Anciãos
+  'ancião':    'elder', 'anciao':    'elder', 'anciaos':   'elder',
+  'elder':     'elder', 'presbitero':'elder', 'presbítero':'elder',
+  // Servos
+  'servo':     'servant', 'servo ministerial': 'servant',
+  'servant':   'servant', 'sm':        'servant', 'diacono': 'servant', 'diácono': 'servant',
+  // Publicadores homens
+  'publicador':'publisher', 'pub':      'publisher', 'publisher':'publisher',
+  'irmao':     'publisher', 'irmão':   'publisher',
+  // Publicadoras
+  'publicadora':'female', 'irma':     'female', 'irmã':     'female',
+  'female':    'female', 'sister':   'female', 'mulher':   'female',
+};
+
+function parsePeopleTxt(text){
+  const lines = text.split('\n').map(l=>l.trim()).filter(l=>l && !l.startsWith('#'));
+  const people = [];
+  const errors = [];
+
+  for(let i=0; i<lines.length; i++){
+    const line = lines[i];
+    // Aceita vírgula ou ponto-e-vírgula como separador
+    const sep = line.includes(';') ? ';' : ',';
+    const parts = line.split(sep).map(p=>p.trim());
+
+    if(parts.length < 2){
+      errors.push(`Linha ${i+1}: formato inválido — "${line}" (esperado: Nome, Função)`);
+      continue;
+    }
+
+    const name = parts[0];
+    const roleRaw = parts[1].toLowerCase().trim();
+    const role = ROLE_ALIASES[roleRaw];
+
+    if(!role){
+      errors.push(`Linha ${i+1}: função desconhecida — "${parts[1]}" (use: ancião, servo, publicador, publicadora)`);
+      continue;
+    }
+
+    if(!name){
+      errors.push(`Linha ${i+1}: nome vazio`);
+      continue;
+    }
+
+    people.push({
+      id: 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2,5),
+      name,
+      role,
+      reading: role !== 'female', // homens têm leitura por padrão
+      talks: role === 'elder',    // só anciãos têm discursos por padrão
+      unavail: [],
+      restrict: [],
+    });
+  }
+
+  return {people, errors};
+}
+
+function importPeopleTxt(ev){
+  const file = ev.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const text = e.target.result;
+    const {people, errors} = parsePeopleTxt(text);
+
+    if(!people.length && errors.length){
+      toast('Nenhuma pessoa importada. Verifique o formato.', true);
+      if(errors.length) alert('Erros encontrados:\n\n' + errors.join('\n'));
+      return;
+    }
+
+    // Confirma antes de adicionar
+    const msg = `Importar ${people.length} pessoa(s)?` +
+      (errors.length ? `\n\n⚠ ${errors.length} linha(s) com erro serão ignoradas:\n${errors.slice(0,5).join('\n')}${errors.length>5?'\n...':''}`:'') +
+      '\n\nAs pessoas serão ADICIONADAS às existentes (sem apagar).';
+
+    if(!confirm(msg)) return;
+
+    // Verifica duplicatas pelo nome
+    let added = 0, skipped = 0;
+    for(const p of people){
+      const exists = state.people.find(x=>x.name.toLowerCase()===p.name.toLowerCase());
+      if(exists){ skipped++; continue; }
+      state.people.push(p);
+      added++;
+    }
+
+    save();
+    renderPeople();
+    ev.target.value='';
+
+    let msg2 = `✓ ${added} pessoa(s) importada(s)`;
+    if(skipped) msg2 += ` · ${skipped} duplicata(s) ignorada(s)`;
+    toast(msg2);
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function showTxtFormat(){
+  alert(
+`📄 Formato do arquivo .txt:
+
+Uma pessoa por linha, no formato:
+  Nome, Função
+
+Funções aceitas:
+  ancião        (ou: anciao, elder, presbítero)
+  servo         (ou: servo ministerial, sm, diácono)
+  publicador    (ou: pub, irmão)
+  publicadora   (ou: irma, irmã, mulher)
+
+Separador: vírgula (,) ou ponto-e-vírgula (;)
+Linhas começando com # são ignoradas (comentários)
+
+Exemplo:
+  # Anciãos
+  Osvaldo Marques, ancião
+  Frank, ancião
+  Marcos, ancião
+
+  # Servos
+  Luccas Marques, servo
+
+  # Publicadores
+  Paulo Vitor, publicador
+  Daniel, publicador
+
+  # Publicadoras
+  Andressa Marques, publicadora
+  Mariele Marques, publicadora`
+  );
 }
 
 /* ════════════════════════════════════════
