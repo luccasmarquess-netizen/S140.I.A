@@ -675,9 +675,11 @@ function loadState(){
     // Migração: converte EBC_DUPLA (par antigo) para EBC_DIRIGENTE + EBC_LEITOR
     if(s.weeks){
       for(const w of s.weeks){
-        if(w.EBC_DUPLA !== undefined){
-          if(!w.EBC_DIRIGENTE) w.EBC_DIRIGENTE = w.EBC_DUPLA?.a || null;
-          if(!w.EBC_LEITOR)    w.EBC_LEITOR    = w.EBC_DUPLA?.b || null;
+        // Migra qualquer forma do campo antigo
+        if(w.EBC_DUPLA !== undefined || w.EBC_DIRIGENTE === undefined){
+          const old = w.EBC_DUPLA;
+          if(!w.EBC_DIRIGENTE) w.EBC_DIRIGENTE = old?.a || null;
+          if(!w.EBC_LEITOR)    w.EBC_LEITOR    = old?.b || null;
           delete w.EBC_DUPLA;
         }
       }
@@ -1088,9 +1090,12 @@ function togglePicker(id,n,tag,pairKey){
 function fillPicker(pickerEl,n,tag,pairKey){
   const part=PARTS.find(p=>p.tag===tag);
   const pool=eligible(part,n).filter(p=>{
-    const abilities = p.restrict||[]; // "restrict" agora armazena habilitações
-    // Se não tem nenhuma habilitação definida → pode fazer tudo (retrocompatibilidade)
-    if(abilities.length === 0){
+    const abilities = p.restrict||[];
+    // Filtra habilitações relevantes (exclui "mecanicas" que é aditiva e independente)
+    const partAbilities = abilities.filter(a=>a!=='mecanicas');
+
+    // Se não tem habilitações para partes normais → pode fazer tudo
+    if(partAbilities.length === 0){
       // Regra de gênero para ajudante (b) em duplas
       if(pairKey==='b' && part.type==='pair'){
         const studentId = state.weeks[n][part.tag]?.a;
@@ -1102,8 +1107,8 @@ function fillPicker(pickerEl,n,tag,pairKey){
       }
       return true;
     }
-    // Se tem habilitações, só aparece se a parte estiver habilitada
-    if(part.restrict && !abilities.includes(part.restrict)) return false;
+    // Se tem habilitações de partes, só aparece se a parte estiver habilitada
+    if(part.restrict && !partAbilities.includes(part.restrict)) return false;
     // Regra de gênero para ajudante (b) em duplas
     if(pairKey==='b' && part.type==='pair'){
       const studentId = state.weeks[n][part.tag]?.a;
@@ -2096,11 +2101,13 @@ function emptyMecanicas(){
 }
 
 function eligibleMecanica(){
-  // Homens com habilitação para mecânicas (ou sem habilitações definidas = pode tudo)
+  // Homens que podem fazer mecânicas:
+  // - Sem nenhuma habilitação definida = pode tudo (inclusive mecânicas)
+  // - Com habilitação "mecanicas" marcada explicitamente
   return state.people.filter(p=>{
     if(p.role==='female') return false;
     const abilities = p.restrict||[];
-    if(abilities.length===0) return true; // sem restrições = pode tudo
+    if(abilities.length===0) return true; // sem restrições = aparece em tudo
     return abilities.includes('mecanicas');
   });
 }
@@ -2512,9 +2519,10 @@ function canAssign(personId, tag, weekIdx, currentAssignments, monthHist){
   const pool = eligible(part, weekIdx);
   if(!pool.find(p=>p.id===personId)) return false;
 
-  // Verifica habilitação opt-in
+  // Verifica habilitação opt-in (ignora "mecanicas" que é independente)
   const abilities = person.restrict||[];
-  if(abilities.length>0 && part.restrict && !abilities.includes(part.restrict)) return false;
+  const partAbilities = abilities.filter(a=>a!=='mecanicas');
+  if(partAbilities.length>0 && part.restrict && !partAbilities.includes(part.restrict)) return false;
 
   const section = sectionOf(tag);
   const role = person.role;
