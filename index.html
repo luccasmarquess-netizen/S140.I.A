@@ -2762,6 +2762,68 @@ function sugerirDesignacoes(){
   }
 }
 
+
+/* ════════════════════════════════════════
+   GOOGLE LOGIN
+════════════════════════════════════════ */
+const GOOGLE_CLIENT_ID = '708777989928-arcccurs3go3i3gv1r7s6gaj3svuh771.apps.googleusercontent.com';
+const AUTHORIZED_EMAILS = []; // vazio = qualquer conta Google; ou ['email@gmail.com']
+
+// DEVE estar no escopo window para o GSI encontrar via string 'onGoogleLogin'
+window.onGoogleLogin = function(response){
+  try {
+    document.getElementById('lock-loading').style.display='none';
+    if(!response || !response.credential) throw new Error('Sem credencial');
+    const parts = response.credential.split('.');
+    const b64 = parts[1].replace(/-/g,'+').replace(/_/g,'/');
+    const payload = JSON.parse(atob(b64));
+    const email = payload.email;
+    const name  = payload.name;
+    const pic   = payload.picture;
+
+    if(AUTHORIZED_EMAILS.length>0 && !AUTHORIZED_EMAILS.includes(email)){
+      const err=document.getElementById('lock-error');
+      err.style.display='block';
+      err.textContent='⚠ Conta não autorizada. Entre em contato com o administrador.';
+      console.warn('Email não autorizado:', email);
+      return;
+    }
+
+    sessionStorage.setItem('s140-auth','1');
+    sessionStorage.setItem('s140-user', JSON.stringify({email,name,pic}));
+    document.getElementById('lock-screen').style.display='none';
+    updateUserInfo({name,pic});
+  } catch(e){
+    console.error('Erro login Google:', e);
+    const err=document.getElementById('lock-error');
+    err.style.display='block';
+    err.textContent='⚠ Erro na autenticação: '+e.message;
+  }
+};
+
+window.triggerGoogleLogin = function(){
+  document.getElementById('lock-loading').style.display='block';
+  if(window.google?.accounts?.id){
+    google.accounts.id.prompt((n)=>{
+      if(n.isNotDisplayed()||n.isSkippedMoment()){
+        document.getElementById('lock-loading').style.display='none';
+        const err=document.getElementById('lock-error');
+        err.style.display='block';
+        err.textContent='⚠ Popup bloqueado. Permita popups para este site.';
+      }
+    });
+  }
+};
+
+// Mostra botão fallback se GSI não renderizar em 3s
+setTimeout(()=>{
+  const gsiFrame=document.querySelector('.g_id_signin iframe');
+  if(!gsiFrame){
+    const fb=document.getElementById('google-fallback-btn');
+    if(fb) fb.style.display='flex';
+  }
+}, 3000);
+
 /* ════════════════════════════════════════
    INIT
 ════════════════════════════════════════ */
