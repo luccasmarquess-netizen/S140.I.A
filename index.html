@@ -3,10 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>S-140 · Programador de Reunião</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMTAwIDEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjIyIiBmaWxsPSIjNmIzNDEwIi8+CiAgPHRleHQgeD0iNTAiIHk9IjcyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIgogICAgZm9udC1mYW1pbHk9Ikdlb3JnaWEsc2VyaWYiIGZvbnQtc2l6ZT0iNzIiIGZvbnQtd2VpZ2h0PSI3MDAiCiAgICBmaWxsPSJ3aGl0ZSI+UzwvdGV4dD4KPC9zdmc+">
-<link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMTAwIDEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjIyIiBmaWxsPSIjNmIzNDEwIi8+CiAgPHRleHQgeD0iNTAiIHk9IjcyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIgogICAgZm9udC1mYW1pbHk9Ikdlb3JnaWEsc2VyaWYiIGZvbnQtc2l6ZT0iNzIiIGZvbnQtd2VpZ2h0PSI3MDAiCiAgICBmaWxsPSJ3aGl0ZSI+UzwvdGV4dD4KPC9zdmc+">
+<title>Cronos · Programador de Reunião</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMTAwIDEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjIyIiBmaWxsPSIjNmIzNDEwIi8+CiAgPHRleHQgeD0iNTAiIHk9IjcyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIgogICAgZm9udC1mYW1pbHk9Ikdlb3JnaWEsc2VyaWYiIGZvbnQtc2l6ZT0iNjgiIGZvbnQtd2VpZ2h0PSI3MDAiCiAgICBmaWxsPSJ3aGl0ZSI+QzwvdGV4dD4KPC9zdmc+">
+<link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMTAwIDEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjIyIiBmaWxsPSIjNmIzNDEwIi8+CiAgPHRleHQgeD0iNTAiIHk9IjcyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIgogICAgZm9udC1mYW1pbHk9Ikdlb3JnaWEsc2VyaWYiIGZvbnQtc2l6ZT0iNjgiIGZvbnQtd2VpZ2h0PSI3MDAiCiAgICBmaWxsPSJ3aGl0ZSI+QzwvdGV4dD4KPC9zdmc+">
 <meta name="theme-color" content="#6b3410">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -208,31 +209,47 @@ table.t tr:hover td{background:#fafaf7}
 </head>
 <body>
 
-<!-- Tela de senha -->
+<!-- Tela de login -->
 <div id="lock-screen" style="
   position:fixed;inset:0;background:var(--bg);
   display:flex;align-items:center;justify-content:center;
   z-index:9999;flex-direction:column;gap:16px;
 ">
   <div style="text-align:center;margin-bottom:8px">
-    <div style="font-family:'Fraunces',serif;font-size:32px;font-weight:500;color:var(--ink)">S-140</div>
+    <div style="font-family:'Fraunces',serif;font-size:36px;font-weight:500;color:var(--ink)">Cronos</div>
     <div style="font-size:13px;color:var(--muted);margin-top:4px">Programador de Reunião</div>
   </div>
-  <div style="background:var(--surface);border:1px solid var(--line);padding:32px;width:90%;max-width:360px;border-radius:3px">
-    <label style="display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Senha de acesso</label>
-    <input type="password" id="lock-input" placeholder="Digite a senha"
-      style="width:100%;padding:10px 12px;border:1px solid var(--line);font-family:inherit;font-size:14px;border-radius:2px;margin-bottom:8px"
-      onkeydown="if(event.key==='Enter')checkPassword()">
-    <div id="lock-error" style="display:none;font-size:12px;color:var(--err);margin-bottom:8px">Senha incorreta.</div>
-    <button onclick="checkPassword()" style="
-      width:100%;padding:10px;background:var(--accent);color:#fff;
-      border:none;font-family:inherit;font-size:14px;cursor:pointer;border-radius:2px;
-    ">Entrar</button>
+  <div style="background:var(--surface);border:1px solid var(--line);padding:36px 32px;width:90%;max-width:380px;border-radius:3px;text-align:center">
+    <p style="font-size:13px;color:var(--ink2);margin-bottom:24px">
+      Acesso restrito. Entre com sua conta Google autorizada.
+    </p>
+    <!-- Botão oficial Google Identity Services -->
+    <div id="g_id_onload"
+      data-client_id="708777989928-arcccurs3go3i3gv1r7s6gaj3svuh771.apps.googleusercontent.com"
+      data-callback="onGoogleLogin"
+      data-auto_select="true"
+      data-itp_support="true">
+    </div>
+    <div class="g_id_signin"
+      data-type="standard"
+      data-size="large"
+      data-theme="outline"
+      data-text="sign_in_with"
+      data-shape="rectangular"
+      data-logo_alignment="left"
+      data-width="300">
+    </div>
+    <div id="lock-error" style="display:none;margin-top:16px;font-size:12px;color:var(--err);padding:8px;background:#fee;border-radius:2px">
+      ⚠ Conta não autorizada. Entre em contato com o administrador.
+    </div>
   </div>
+  <p style="font-size:11px;color:var(--muted);text-align:center;max-width:320px">
+    Cronos · Programador de Reunião<br>Acesso protegido por Google
+  </p>
 </div>
 
 <header class="app-header">
-  <h1>S-140 <small id="header-cong">Programador de Reunião</small></h1>
+  <h1>Cronos <small id="header-cong">Programador de Reunião</small></h1>
   <div class="hdr-btns">
     <button onclick="toggleTheme()" id="theme-btn" title="Alternar tema">🌙</button>
     <button onclick="openImportModal()">📖 Importar apostila</button>
@@ -430,7 +447,7 @@ table.t tr:hover td{background:#fafaf7}
   <h2 id="pm-title">Adicionar pessoa</h2>
   <div class="form-row"><label>Nome</label><input type="text" id="pm-name"></div>
   <div class="form-row"><label>Função</label>
-    <select id="pm-role">
+    <select id="pm-role" onchange="renderRestrictTags()">
       <option value="elder">Ancião</option>
       <option value="servant">Servo ministerial</option>
       <option value="publisher">Publicador (homem)</option>
@@ -632,31 +649,7 @@ function emptyWeek(){
 }
 
 function seedPeople(){
-  return [
-    {id:'p01',name:'Osvaldo Marques',  role:'elder',    reading:true, talks:true, unavail:[],restrict:[]},
-    {id:'p02',name:'Frank',            role:'elder',    reading:true, talks:true, unavail:[],restrict:[]},
-    {id:'p03',name:'Marcos',           role:'elder',    reading:true, talks:true, unavail:[],restrict:[]},
-    {id:'p04',name:'Luccas Marques',   role:'servant',  reading:true, talks:false,unavail:[],restrict:[]},
-    {id:'p05',name:'Paulo Vitor',      role:'publisher',reading:true, talks:false,unavail:[],restrict:[]},
-    {id:'p06',name:'Daniel',           role:'publisher',reading:true, talks:false,unavail:[],restrict:[]},
-    {id:'p07',name:'Gabriel',          role:'publisher',reading:true, talks:false,unavail:[],restrict:[]},
-    {id:'p08',name:'Antônio Fiasco',   role:'publisher',reading:true, talks:false,unavail:[],restrict:[]},
-    {id:'p09',name:'Antônio Carlos',   role:'publisher',reading:true, talks:false,unavail:[],restrict:[]},
-    {id:'p10',name:'Osvaldo Ferreira', role:'publisher',reading:true, talks:false,unavail:[],restrict:[]},
-    {id:'p11',name:'Valdir',           role:'publisher',reading:true, talks:false,unavail:[],restrict:[]},
-    {id:'p12',name:'Djalma',           role:'publisher',reading:true, talks:false,unavail:[],restrict:[]},
-    {id:'p13',name:'Andressa Marques', role:'female',   reading:false,talks:false,unavail:[],restrict:[]},
-    {id:'p14',name:'Mariele Marques',  role:'female',   reading:false,talks:false,unavail:[],restrict:[]},
-    {id:'p15',name:'Daniela',          role:'female',   reading:false,talks:false,unavail:[],restrict:[]},
-    {id:'p16',name:'Celma',            role:'female',   reading:false,talks:false,unavail:[],restrict:[]},
-    {id:'p17',name:'Edna',             role:'female',   reading:false,talks:false,unavail:[],restrict:[]},
-    {id:'p18',name:'Isabel',           role:'female',   reading:false,talks:false,unavail:[],restrict:[]},
-    {id:'p19',name:'Cristina',         role:'female',   reading:false,talks:false,unavail:[],restrict:[]},
-    {id:'p20',name:'Rita',             role:'female',   reading:false,talks:false,unavail:[],restrict:[]},
-    {id:'p21',name:'Sônia',            role:'female',   reading:false,talks:false,unavail:[],restrict:[]},
-    {id:'p22',name:'Geyse',            role:'female',   reading:false,talks:false,unavail:[],restrict:[]},
-    {id:'p23',name:'Fátima',           role:'female',   reading:false,talks:false,unavail:[],restrict:[]},
-  ];
+  return []; // App começa sem pessoas — cadastre na aba Pessoas
 }
 
 function loadState(){
@@ -1286,7 +1279,26 @@ function toggleAvail(w){
 }
 function renderRestrictTags(){
   const c=document.getElementById('pm-restrict');
-  c.innerHTML=RESTRICT_PARTS.map(r=>
+  const role = document.getElementById('pm-role')?.value||'publisher';
+  const isFemale = role==='female';
+
+  // Publicadoras só podem fazer FSM
+  // Homens podem fazer tudo
+  const visible = isFemale
+    ? RESTRICT_PARTS.filter(r=>r.key==='fsm'||r.key==='mecanicas'===false) // só FSM
+    : RESTRICT_PARTS; // tudo
+
+  // Para publicadoras: mostra só FSM e uma nota explicativa
+  if(isFemale){
+    c.innerHTML = `
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px;font-style:italic">
+        Publicadoras participam apenas do Faça Seu Melhor no Ministério.
+      </div>
+      <div class="restrict-tag${tempRestrict.includes('fsm')?' on':''}" onclick="toggleRestrict('fsm')">Faça Seu Melhor (estudante/ajudante)</div>`;
+    return;
+  }
+
+  c.innerHTML = visible.map(r=>
     `<div class="restrict-tag${tempRestrict.includes(r.key)?' on':''}" onclick="toggleRestrict('${r.key}')">${r.label}</div>`
   ).join('');
 }
@@ -2607,7 +2619,9 @@ function choosePerson(tag, weekIdx, currentAssignments, monthHist, excludeIds=[]
   const pool = eligible(part, weekIdx).filter(p=>{
     if(excludeIds.includes(p.id)) return false;
     const abilities = p.restrict||[];
-    if(abilities.length>0 && part.restrict && !abilities.includes(part.restrict)) return false;
+    // "mecanicas" é habilitação aditiva — não afeta partes normais
+    const partAbilities = abilities.filter(a=>a!=='mecanicas');
+    if(partAbilities.length>0 && part.restrict && !partAbilities.includes(part.restrict)) return false;
     // Regra de gênero: publicadoras só com publicadoras, publicadores só com publicadores
     if(sameRole){
       const isFemale = r => r==='female';
@@ -2772,9 +2786,13 @@ document.addEventListener('DOMContentLoaded',()=>{
   // Verifica se já autenticou nesta sessão
   if(sessionStorage.getItem('s140-auth')=='1'){
     document.getElementById('lock-screen').style.display='none';
-  } else {
-    setTimeout(()=>document.getElementById('lock-input').focus(), 100);
+    // Restaura info do usuário
+    try{
+      const u = JSON.parse(sessionStorage.getItem('s140-user')||'null');
+      if(u) updateUserInfo(u);
+    }catch(e){}
   }
+  // Se Google já autenticou via auto_select, onGoogleLogin é chamado automaticamente
   renderSchedule();
   updateHeaderCong();
 });
