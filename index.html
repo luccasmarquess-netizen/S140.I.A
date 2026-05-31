@@ -4088,13 +4088,12 @@ function closeGuia(){ document.getElementById('guia-bg').classList.remove('open'
    TELA DE BOAS-VINDAS
 ════════════════════════════════════════ */
 function checkFirstAccess(){
-  // Só mostra boas-vindas se:
-  // 1. Firebase já carregou (currentCongId definido mas vazio só após tentativa)
-  // 2. Não tem congregação
-  // 3. Não tem dados locais
-  if(currentCongId) return; // tem congregação = não mostra
-  if(state.congregacao || state.people.length) return; // tem dados = não mostra
-  if(!_firebaseLoaded) return; // Firebase ainda não tentou = não mostra ainda
+  // Nunca mostra se já tem congregação no Firestore
+  if(currentCongId) return;
+  // Nunca mostra se Firebase ainda não carregou
+  if(!_firebaseLoaded) return;
+  // Só mostra se realmente não há dados
+  if(state.congregacao || state.people.length) return;
   const ws = document.getElementById('welcome-screen');
   if(ws) ws.style.display='flex';
 }
@@ -4550,6 +4549,7 @@ function updateUserInfo(user){
 }
 
 function onUserLoaded(){
+  _firebaseLoaded = true; // Firebase terminou de carregar
   updateHeaderCong();
   updateUserInfo({name: currentUser?.displayName, pic: currentUser?.photoURL});
   if(isAdminUser){
