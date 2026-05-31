@@ -11,7 +11,35 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMTAwIDEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjIyIiBmaWxsPSIjNmIzNDEwIi8+CiAgPHRleHQgeD0iNTAiIHk9IjcyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIgogICAgZm9udC1mYW1pbHk9Ikdlb3JnaWEsc2VyaWYiIGZvbnQtc2l6ZT0iNjgiIGZvbnQtd2VpZ2h0PSI3MDAiCiAgICBmaWxsPSJ3aGl0ZSI+QzwvdGV4dD4KPC9zdmc+">
 <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMTAwIDEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjIyIiBmaWxsPSIjNmIzNDEwIi8+CiAgPHRleHQgeD0iNTAiIHk9IjcyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIgogICAgZm9udC1mYW1pbHk9Ikdlb3JnaWEsc2VyaWYiIGZvbnQtc2l6ZT0iNjgiIGZvbnQtd2VpZ2h0PSI3MDAiCiAgICBmaWxsPSJ3aGl0ZSI+QzwvdGV4dD4KPC9zdmc+">
 <meta name="theme-color" content="#6b3410">
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer onload="initGoogleLogin()"></script>
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
+    from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+  import { getFirestore, doc, getDoc, setDoc, collection, getDocs, onSnapshot, serverTimestamp }
+    from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+  const firebaseConfig = {
+  apiKey: "AIzaSyDY07W-SGOEGLQLCZwX7mGYHP3Lu_1Y9Vw",
+  authDomain: "s140-497817.firebaseapp.com",
+  projectId: "s140-497817",
+  storageBucket: "s140-497817.firebasestorage.app",
+  messagingSenderId: "708777989928",
+  appId: "1:708777989928:web:114ac606d95a75b9cc221d"
+};
+  const fbApp  = initializeApp(firebaseConfig);
+  const fbAuth = getAuth(fbApp);
+  const fbDb   = getFirestore(fbApp);
+
+  // Expõe para o código global
+  window._fb = { fbAuth, fbDb, GoogleAuthProvider, signInWithPopup, signOut,
+    onAuthStateChanged, doc, getDoc, setDoc, collection, getDocs, onSnapshot, serverTimestamp };
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -228,8 +256,24 @@ table.t tr:hover td{background:#fafaf7}
     <p style="font-size:13px;color:var(--ink2);margin-bottom:24px">
       Acesso restrito. Entre com sua conta Google autorizada.
     </p>
-    <!-- Container do botão Google (preenchido por initGoogleLogin) -->
-    <div id="google-btn-container" style="display:flex;justify-content:center;min-height:44px;margin-bottom:4px"></div>
+    <!-- Botão de login Firebase -->
+    <button onclick="signInWithGoogle()" style="
+      display:flex;align-items:center;justify-content:center;gap:10px;
+      width:300px;padding:10px 16px;margin:0 auto;
+      background:#fff;border:1px solid #dadce0;border-radius:4px;
+      font-family:inherit;font-size:14px;cursor:pointer;
+      transition:background .15s;
+    " onmouseover="this.style.background='#f8f8f8'" onmouseout="this.style.background='#fff'">
+      <svg width="18" height="18" viewBox="0 0 48 48">
+        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+      </svg>
+      Entrar com Google
+    </button>
+    <!-- Container GSI (fallback) -->
+    <div id="google-btn-container" style="display:none"></div>
     <div id="lock-error" style="display:none;margin-top:16px;font-size:12px;color:var(--err);padding:8px;background:#fee;border-radius:2px">
       ⚠ Conta não autorizada. Entre em contato com o administrador.
     </div>
@@ -994,6 +1038,8 @@ function save(){
   _undoStack.push(JSON.stringify(state));
   if(_undoStack.length > UNDO_LIMIT) _undoStack.shift();
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  // Salva no Firestore (async, não bloqueia)
+  saveToFirestore().catch(e=>console.warn('Firestore save error:',e));
 }
 
 function undo(){
@@ -4010,6 +4056,318 @@ function initGoogleLogin(){
   });
 }
 
+
+/* ════════════════════════════════════════
+   FIREBASE — AUTH + FIRESTORE
+════════════════════════════════════════ */
+let currentUser = null;
+let currentCongId = null;
+let isAdminUser = false;
+
+// Inicializa Firebase Auth após módulo carregar
+async function initFirebaseAuth(){
+  if(!window._fb) { console.warn('Firebase não carregado ainda'); return; }
+  const {fbAuth, onAuthStateChanged} = window._fb;
+
+  onAuthStateChanged(fbAuth, async (user)=>{
+    if(user){
+      currentUser = user;
+      document.getElementById('lock-screen').style.display='none';
+      await loadUserCongregacao(user);
+    } else {
+      currentUser = null;
+      // Mostra tela de login Firebase
+      renderFirebaseLoginScreen();
+    }
+  });
+}
+
+function renderFirebaseLoginScreen(){
+  const ls = document.getElementById('lock-screen');
+  ls.style.display='flex';
+}
+
+async function signInWithGoogle(){
+  if(!window._fb) return;
+  const {fbAuth, GoogleAuthProvider, signInWithPopup} = window._fb;
+  try {
+    const provider = new GoogleAuthProvider();
+    await signInWithPopup(fbAuth, provider);
+  } catch(e){
+    console.error('Erro login:', e);
+    const err = document.getElementById('lock-error');
+    if(err){ err.style.display='block'; err.textContent='⚠ Erro ao fazer login: '+e.message; }
+  }
+}
+
+async function signOutUser(){
+  if(!window._fb) return;
+  if(!confirm('Sair da conta?')) return;
+  const {fbAuth, signOut} = window._fb;
+  await signOut(fbAuth);
+  currentUser = null;
+  currentCongId = null;
+  isAdminUser = false;
+  sessionStorage.clear();
+  location.reload();
+}
+
+// Carrega a congregação do usuário
+async function loadUserCongregacao(user){
+  const {fbDb, doc, getDoc, collection, getDocs} = window._fb;
+
+  // Busca em qual congregação este email está cadastrado
+  // Estratégia: busca em todas as congregações pelo email
+  const congsRef = collection(fbDb, 'congregacoes');
+  const congsSnap = await getDocs(congsRef);
+
+  let foundCong = null;
+  let foundIsAdmin = false;
+
+  for(const congDoc of congsSnap.docs){
+    const config = congDoc.data().config || {};
+    // Verifica se é admin
+    if((config.admins||[]).includes(user.email)){
+      foundCong = congDoc.id;
+      foundIsAdmin = true;
+      break;
+    }
+    // Verifica se é membro (pessoa cadastrada)
+    const pessoasRef = collection(fbDb, 'congregacoes', congDoc.id, 'pessoas');
+    const pessoasSnap = await getDocs(pessoasRef);
+    for(const pDoc of pessoasSnap.docs){
+      if(pDoc.data().email === user.email){
+        foundCong = congDoc.id;
+        foundIsAdmin = false;
+        break;
+      }
+    }
+    if(foundCong) break;
+  }
+
+  if(!foundCong){
+    // Usuário novo — primeiro admin cria a congregação
+    if(congsSnap.empty){
+      await createFirstCongregacao(user);
+    } else {
+      // Usuário não encontrado em nenhuma congregação
+      document.getElementById('lock-error').style.display='block';
+      document.getElementById('lock-error').textContent='⚠ Sua conta não está cadastrada em nenhuma congregação. Entre em contato com o administrador.';
+      const {fbAuth, signOut} = window._fb;
+      await signOut(fbAuth);
+      document.getElementById('lock-screen').style.display='flex';
+      return;
+    }
+  } else {
+    currentCongId = foundCong;
+    isAdminUser = foundIsAdmin;
+    await loadStateFromFirestore();
+    onUserLoaded();
+  }
+}
+
+// Cria a primeira congregação (setup inicial)
+async function createFirstCongregacao(user){
+  const {fbDb, doc, setDoc} = window._fb;
+  const congId = 'cong-' + Date.now().toString(36);
+  await setDoc(doc(fbDb, 'congregacoes', congId, 'config', 'config'), {
+    nome: 'Minha Congregação',
+    startTime: '19:00',
+    admins: [user.email],
+    criadoEm: new Date().toISOString(),
+  });
+  currentCongId = congId;
+  isAdminUser = true;
+  await loadStateFromFirestore();
+  onUserLoaded();
+  toast('Congregação criada! Configure o nome em Configurações.');
+}
+
+// Carrega state do Firestore
+async function loadStateFromFirestore(){
+  if(!currentCongId || !window._fb) return;
+  const {fbDb, doc, getDoc, collection, getDocs} = window._fb;
+  const base = `congregacoes/${currentCongId}`;
+
+  try {
+    // Config
+    const configDoc = await getDoc(doc(fbDb, base+'/config/config'));
+    if(configDoc.exists()){
+      const c = configDoc.data();
+      state.congregacao = c.nome||'';
+      state.startTime   = c.startTime||'19:00';
+      state.events      = c.events||[];
+      state.campoLocais = c.campoLocais||[];
+      state.campoDias   = c.campoDias||[];
+    }
+
+    // Pessoas
+    const pessoasSnap = await getDocs(collection(fbDb, base+'/pessoas'));
+    state.people = pessoasSnap.docs.map(d=>({id:d.id,...d.data()}));
+
+    // Programação (mês atual)
+    const mesAtual = new Date().toISOString().slice(0,7); // ex: 2026-06
+    const progDoc  = await getDoc(doc(fbDb, base+`/programacao/${mesAtual}`));
+    if(progDoc.exists()){
+      const p = progDoc.data();
+      state.weeks    = p.weeks    || [emptyWeek(),emptyWeek(),emptyWeek(),emptyWeek(),emptyWeek()];
+      state.historico= p.historico|| [];
+    }
+
+    // Mecânicas
+    const mecDoc = await getDoc(doc(fbDb, base+`/mecanicas/${mesAtual}`));
+    if(mecDoc.exists()){
+      const m = mecDoc.data();
+      state.mecanicas = m.mecanicas || emptyMecanicas();
+      state.grupos    = m.grupos    || [];
+      state.limpeza   = m.limpeza   || Array(5).fill(null).map(()=>({grupo:null}));
+    }
+
+    // Campo
+    const campoDoc = await getDoc(doc(fbDb, base+`/campo/${mesAtual}`));
+    if(campoDoc.exists()){
+      const c = campoDoc.data();
+      state.campoDesignacoes = c.designacoes || {};
+      state.campoHistorico   = c.historico   || [];
+    }
+
+    console.log('[Cronos] State carregado do Firestore');
+  } catch(e){
+    console.warn('[Cronos] Erro ao carregar Firestore, usando localStorage:', e);
+  }
+}
+
+// Salva state no Firestore (chamado pelo save() existente)
+async function saveToFirestore(){
+  if(!currentCongId || !window._fb || !isAdminUser) return;
+  const {fbDb, doc, setDoc} = window._fb;
+  const base = `congregacoes/${currentCongId}`;
+  const mesAtual = new Date().toISOString().slice(0,7);
+
+  try {
+    // Config
+    await setDoc(doc(fbDb, base+'/config/config'), {
+      nome:        state.congregacao||'',
+      startTime:   state.startTime||'19:00',
+      admins:      state._admins || [currentUser?.email],
+      events:      state.events||[],
+      campoLocais: state.campoLocais||[],
+      campoDias:   state.campoDias||[],
+    }, {merge:true});
+
+    // Pessoas
+    for(const p of state.people){
+      await setDoc(doc(fbDb, base+`/pessoas/${p.id}`), p, {merge:true});
+    }
+
+    // Programação
+    await setDoc(doc(fbDb, base+`/programacao/${mesAtual}`), {
+      weeks:     state.weeks,
+      historico: state.historico||[],
+      updatedAt: new Date().toISOString(),
+    }, {merge:true});
+
+    // Mecânicas
+    await setDoc(doc(fbDb, base+`/mecanicas/${mesAtual}`), {
+      mecanicas: state.mecanicas,
+      grupos:    state.grupos||[],
+      limpeza:   state.limpeza||[],
+      updatedAt: new Date().toISOString(),
+    }, {merge:true});
+
+    // Campo
+    await setDoc(doc(fbDb, base+`/campo/${mesAtual}`), {
+      designacoes: state.campoDesignacoes||{},
+      historico:   state.campoHistorico||[],
+      updatedAt:   new Date().toISOString(),
+    }, {merge:true});
+
+  } catch(e){
+    console.warn('[Cronos] Erro ao salvar no Firestore:', e);
+  }
+}
+
+function onUserLoaded(){
+  // Atualiza UI
+  updateHeaderCong();
+  updateUserInfo({name: currentUser?.displayName, pic: currentUser?.photoURL});
+  if(isAdminUser){
+    renderSchedule();
+    renderPeople();
+    checkFirstAccess();
+  } else {
+    // Publicador: mostra só a tela de designações
+    showPublicadorView();
+  }
+}
+
+// ── TELA DO PUBLICADOR ──────────────────────────────
+function showPublicadorView(){
+  // Esconde todas as abas de admin
+  document.querySelectorAll('.tabs, .week-bar').forEach(el=>el.style.display='none');
+  document.querySelector('.hdr-btns')?.querySelectorAll('button:not(#theme-btn):not(#user-avatar)')
+    .forEach(btn=>{ if(!['↩','🔍','❓'].includes(btn.textContent.trim())) btn.style.display='none'; });
+
+  // Mostra só a seção de programação (readonly)
+  switchView('programacao');
+
+  // Injeta banner de publicador
+  const main = document.querySelector('main') || document.body;
+  const banner = document.createElement('div');
+  banner.style.cssText='background:var(--surface);border:1px solid var(--line);border-radius:3px;padding:16px 20px;margin-bottom:16px';
+  banner.innerHTML=`
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="font-size:24px">👤</div>
+      <div>
+        <div style="font-weight:600;font-size:15px">${esc(currentUser?.displayName||'')}</div>
+        <div style="font-size:12px;color:var(--muted)">Suas designações este mês</div>
+      </div>
+    </div>
+    <div id="pub-designacoes" style="margin-top:12px"></div>`;
+  main.prepend(banner);
+  renderPublicadorDesignacoes();
+}
+
+function renderPublicadorDesignacoes(){
+  const el = document.getElementById('pub-designacoes');
+  if(!el) return;
+
+  // Encontra a pessoa pelo email
+  const person = state.people.find(p=>p.email===currentUser?.email);
+  if(!person){
+    el.innerHTML='<p style="color:var(--muted);font-size:13px">Você ainda não foi cadastrado pela administração.</p>';
+    return;
+  }
+
+  const designacoes=[];
+  for(let n=0;n<5;n++){
+    const w=state.weeks[n];
+    if(!w.DATA) continue;
+    for(const part of PARTS){
+      if(part.type==='person'&&w[part.tag]===person.id)
+        designacoes.push({semana:w.DATA,parte:part.label,hora:w['H_'+part.tag]||''});
+      if(part.type==='pair'){
+        if(w[part.tag]?.a===person.id) designacoes.push({semana:w.DATA,parte:part.label+' (Estudante)',hora:w['H_'+part.tag]||''});
+        if(w[part.tag]?.b===person.id) designacoes.push({semana:w.DATA,parte:part.label+' (Ajudante)',hora:w['H_'+part.tag]||''});
+      }
+    }
+  }
+
+  if(!designacoes.length){
+    el.innerHTML='<p style="color:var(--muted);font-size:13px;font-style:italic">Nenhuma designação este mês.</p>';
+    return;
+  }
+
+  el.innerHTML=designacoes.map(d=>`
+    <div style="display:flex;gap:12px;padding:10px 12px;background:#f7f5f0;border-radius:2px;margin-bottom:6px;align-items:center">
+      <span style="font-size:18px">📌</span>
+      <div>
+        <div style="font-size:13px;font-weight:500">${esc(d.parte)}</div>
+        <div style="font-size:12px;color:var(--muted)">${esc(d.semana)}${d.hora?' · '+d.hora:''}</div>
+      </div>
+    </div>`).join('');
+}
+
 /* ════════════════════════════════════════
    INIT
 ════════════════════════════════════════ */
@@ -4045,6 +4403,10 @@ function checkPassword(){
 
 document.addEventListener('DOMContentLoaded',()=>{
   applyTheme(); // aplica antes de qualquer render para evitar flash
+  // Inicia Firebase Auth (aguarda módulo carregar)
+  const waitFirebase = setInterval(()=>{
+    if(window._fb){ clearInterval(waitFirebase); initFirebaseAuth(); }
+  }, 100);
   // Verifica se já autenticou nesta sessão
   if(sessionStorage.getItem('s140-auth')=='1'){
     document.getElementById('lock-screen').style.display='none';
