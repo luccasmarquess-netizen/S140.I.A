@@ -511,6 +511,13 @@ table.t tr:hover td{background:#fafaf7}
   </div>
   <div class="settings-card">
     <h3>Horários</h3>
+    <div class="form-row">
+      <label>Mecânicas — grupo único por semana</label>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:4px">
+        <input type="checkbox" id="cfg-mec-unico" onchange="saveCfg()">
+        <span style="font-size:13px;color:var(--ink2)">Usar o mesmo grupo de mecânicas para Meio de Semana e Fim de Semana</span>
+      </label>
+    </div>
     <div class="form-row"><label>Horário de início da reunião</label>
       <input type="text" id="cfg-start" placeholder="19:00" oninput="saveCfg()">
     </div>
@@ -1270,6 +1277,7 @@ function switchView(name){
   if(name==='settings'){
     document.getElementById('cfg-cong').value=state.congregacao||'';
     document.getElementById('cfg-start').value=state.startTime||'19:00';
+    if(document.getElementById('cfg-mec-unico')) document.getElementById('cfg-mec-unico').checked=state.mecUnico||false;
     renderEventsList();
   }
   if(name==='admin') renderAdminPanel();
@@ -3068,18 +3076,31 @@ function renderMecanicas(){
       <div style="font-family:'Fraunces',serif;font-weight:500;font-size:15px;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--line)">${esc(dataLabel)}</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">`;
 
-    for(const r of REUNIOES){
-      html += `<div>
-        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);font-weight:600;margin-bottom:8px">${r.label}</div>`;
+    if(state.mecUnico){
+      // Uma única coluna: usa mds como referência
+      html += `<div style="grid-column:1/-1">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);font-weight:600;margin-bottom:8px">Meio de Semana e Fim de Semana (mesmo grupo)</div>`;
       for(const f of MECANICA_FUNCOES){
-        const val = state.mecanicas[n]?.[r.key]?.[f.key]||null;
-        const person = val ? state.people.find(p=>p.id===val) : null;
+        const val = state.mecanicas[n]?.mds?.[f.key]||null;
         html += `<div style="display:grid;grid-template-columns:90px 1fr;gap:8px;margin-bottom:6px;align-items:center">
           <span style="font-size:12px;color:var(--ink2)">${f.label}</span>
-          ${renderMecPicker(n, r.key, f.key, val)}
+          ${renderMecPicker(n, 'mds', f.key, val)}
         </div>`;
       }
       html += `</div>`;
+    } else {
+      for(const r of REUNIOES){
+        html += `<div>
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);font-weight:600;margin-bottom:8px">${r.label}</div>`;
+        for(const f of MECANICA_FUNCOES){
+          const val = state.mecanicas[n]?.[r.key]?.[f.key]||null;
+          html += `<div style="display:grid;grid-template-columns:90px 1fr;gap:8px;margin-bottom:6px;align-items:center">
+            <span style="font-size:12px;color:var(--ink2)">${f.label}</span>
+            ${renderMecPicker(n, r.key, f.key, val)}
+          </div>`;
+        }
+        html += `</div>`;
+      }
     }
     html += `</div></div>`;
   }
@@ -3152,6 +3173,12 @@ function selectMec(weekIdx, reuniao, funcao, id){
   if(!state.mecanicas[weekIdx]) state.mecanicas[weekIdx]={};
   if(!state.mecanicas[weekIdx][reuniao]) state.mecanicas[weekIdx][reuniao]={};
   state.mecanicas[weekIdx][reuniao][funcao] = id;
+  // Se mecUnico: replica no outro período
+  if(state.mecUnico){
+    const outro = reuniao==='mds'?'fds':'mds';
+    if(!state.mecanicas[weekIdx][outro]) state.mecanicas[weekIdx][outro]={};
+    state.mecanicas[weekIdx][outro][funcao] = id;
+  }
   save();
   document.querySelectorAll('.picker.open').forEach(p=>p.classList.remove('open'));
   renderMecanicas();
