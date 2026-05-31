@@ -594,6 +594,7 @@ table.t tr:hover td{background:#fafaf7}
 <div class="modal">
   <h2 id="pm-title">Adicionar pessoa</h2>
   <div class="form-row"><label>Nome</label><input type="text" id="pm-name"></div>
+  <div class="form-row"><label>E-mail Google <span style="font-size:11px;color:var(--muted)">(para login do publicador)</span></label><input type="email" id="pm-email" placeholder="email@gmail.com"></div>
   <div class="form-row"><label>Função</label>
     <select id="pm-role" onchange="renderRestrictTags()">
       <option value="elder">Ancião</option>
@@ -1690,6 +1691,7 @@ function openPersonModal(id=null){
   const p=id ? state.people.find(x=>x.id===id) : null;
   document.getElementById('pm-title').textContent=id?'Editar pessoa':'Adicionar pessoa';
   document.getElementById('pm-name').value=p?.name||'';
+  if(document.getElementById('pm-email')) document.getElementById('pm-email').value=p?.email||'';
   document.getElementById('pm-role').value=p?.role||'publisher';
   document.getElementById('pm-reading').checked=p?.reading??true;
   document.getElementById('pm-talks').checked=p?.talks??false;
