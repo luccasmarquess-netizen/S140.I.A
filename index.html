@@ -19,7 +19,8 @@
 <!-- Firebase SDK -->
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-  import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect,
+    getRedirectResult, signOut, onAuthStateChanged }
     from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
   import { getFirestore, doc, getDoc, setDoc, collection, getDocs, onSnapshot, serverTimestamp }
     from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
@@ -37,8 +38,14 @@
   const fbDb   = getFirestore(fbApp);
 
   // Expõe para o código global
-  window._fb = { fbAuth, fbDb, GoogleAuthProvider, signInWithPopup, signOut,
-    onAuthStateChanged, doc, getDoc, setDoc, collection, getDocs, onSnapshot, serverTimestamp };
+  window._fb = { fbAuth, fbDb, GoogleAuthProvider, signInWithPopup, signInWithRedirect,
+    getRedirectResult, signOut, onAuthStateChanged,
+    doc, getDoc, setDoc, collection, getDocs, onSnapshot, serverTimestamp };
+
+  // Processa resultado do redirect (mobile)
+  getRedirectResult(fbAuth).then(result => {
+    if(result?.user) console.log('[Cronos] Redirect login OK:', result.user.email);
+  }).catch(e => console.warn('[Cronos] Redirect result erro:', e));
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -4141,7 +4148,15 @@ let isAdminUser = false;
 // Inicializa Firebase Auth após módulo carregar
 async function initFirebaseAuth(){
   if(!window._fb) { console.warn('Firebase não carregado ainda'); return; }
-  const {fbAuth, onAuthStateChanged} = window._fb;
+  const {fbAuth, onAuthStateChanged, getRedirectResult} = window._fb;
+
+  // Processa resultado de redirect (mobile)
+  try {
+    const result = await getRedirectResult(fbAuth);
+    if(result?.user) console.log('[Cronos] Redirect login OK:', result.user.email);
+  } catch(e) {
+    console.warn('[Cronos] getRedirectResult erro:', e.message);
+  }
 
   onAuthStateChanged(fbAuth, async (user)=>{
     if(user){
@@ -4150,7 +4165,6 @@ async function initFirebaseAuth(){
       await loadUserCongregacao(user);
     } else {
       currentUser = null;
-      // Mostra tela de login Firebase
       renderFirebaseLoginScreen();
     }
   });
@@ -4161,12 +4175,22 @@ function renderFirebaseLoginScreen(){
   ls.style.display='flex';
 }
 
+function isMobile(){
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+}
+
 async function signInWithGoogle(){
   if(!window._fb) return;
-  const {fbAuth, GoogleAuthProvider, signInWithPopup} = window._fb;
+  const {fbAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect} = window._fb;
   try {
     const provider = new GoogleAuthProvider();
-    await signInWithPopup(fbAuth, provider);
+    if(isMobile()){
+      // Mobile: usa redirect (mais confiável)
+      await signInWithRedirect(fbAuth, provider);
+    } else {
+      // Desktop: usa popup
+      await signInWithPopup(fbAuth, provider);
+    }
   } catch(e){
     console.error('Erro login:', e);
     const err = document.getElementById('lock-error');
