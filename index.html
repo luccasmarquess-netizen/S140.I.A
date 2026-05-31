@@ -4413,21 +4413,60 @@ function updateUserInfo(user){
 }
 
 function onUserLoaded(){
-  // Atualiza UI
   updateHeaderCong();
   updateUserInfo({name: currentUser?.displayName, pic: currentUser?.photoURL});
   if(isAdminUser){
-    // Mostra aba Admin
     const tabAdmin = document.getElementById('tab-admin');
     if(tabAdmin) tabAdmin.style.display='';
     renderSchedule();
     renderPeople();
     checkFirstAccess();
+    // Admin também ouve mudanças em tempo real
+    startRealtimeSync();
   } else {
-    // Publicador: esconde aba admin, mostra só designações
     const tabAdmin = document.getElementById('tab-admin');
     if(tabAdmin) tabAdmin.style.display='none';
     showPublicadorView();
+    // Publicador ouve mudanças em tempo real
+    startRealtimeSync();
+  }
+}
+
+// Ouve mudanças no Firestore em tempo real
+function startRealtimeSync(){
+  if(!currentCongId || !window._fb) return;
+  const {fbDb, doc, onSnapshot} = window._fb;
+  const mesAtual = new Date().toISOString().slice(0,7);
+
+  // Ouve programação
+  onSnapshot(
+    doc(fbDb, `congregacoes/${currentCongId}/programacao/${mesAtual}`),
+    (snap) => {
+      if(!snap.exists()) return;
+      const data = snap.data();
+      if(data.weeks) state.weeks = data.weeks;
+      if(data.historico) state.historico = data.historico;
+      // Atualiza UI sem recarregar tudo
+      if(isAdminUser){
+        renderSchedule();
+      } else {
+        renderPublicadorDesignacoes();
+      }
+      console.log('[Cronos] Programação atualizada em tempo real');
+    },
+    err => console.warn('[Cronos] onSnapshot erro:', err)
+  );
+
+  // Ouve pessoas (para publicador ver nome atualizado)
+  if(!isAdminUser){
+    onSnapshot(
+      doc(fbDb, `congregacoes/${currentCongId}/config/config`),
+      (snap) => {
+        if(!snap.exists()) return;
+        const data = snap.data();
+        if(data.nome) { state.congregacao = data.nome; updateHeaderCong(); }
+      }
+    );
   }
 }
 
@@ -4668,8 +4707,16 @@ function checkPassword(){
 }
 
 document.addEventListener('DOMContentLoaded',()=>{
-  applyTheme(); // aplica antes de qualquer render para evitar flash
-  // Inicia Firebase Auth (aguarda módulo carregar)
+  applyTheme();
+
+  // Registra Service Worker (PWA)
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('/S140.I.A/sw.js')
+      .then(()=>console.log('[SW] Registrado'))
+      .catch(e=>console.warn('[SW] Erro:',e));
+  }
+
+  // Inicia Firebase Auth
   const waitFirebase = setInterval(()=>{
     if(window._fb){ clearInterval(waitFirebase); initFirebaseAuth(); }
   }, 100);
