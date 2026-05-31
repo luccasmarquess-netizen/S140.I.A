@@ -318,6 +318,7 @@ table.t tr:hover td{background:#fafaf7}
   <button data-view="mecanicas" onclick="switchView('mecanicas')">Mecânicas</button>
   <button data-view="campo" onclick="switchView('campo')">Campo</button>
   <button data-view="limpeza" onclick="switchView('limpeza')">Limpeza</button>
+  <button data-view="admin" onclick="switchView('admin')" id="tab-admin" style="display:none">⚙ Admin</button>
   <button data-view="settings" onclick="switchView('settings')">Configurações</button>
 </nav>
 
@@ -442,6 +443,55 @@ table.t tr:hover td{background:#fafaf7}
   </div>
   <!-- Escala semanal -->
   <div id="limpeza-container"></div>
+</section>
+
+<!-- ══ ADMIN ══ -->
+<section class="view" id="view-admin">
+  <h2 style="font-family:'Fraunces',serif;font-weight:500;font-size:22px;margin-bottom:20px">Painel de Administração</h2>
+
+  <!-- Info da congregação -->
+  <div class="settings-card">
+    <h3>Congregação</h3>
+    <div id="admin-cong-info" style="font-size:13px;color:var(--ink2);margin-bottom:12px"></div>
+    <div style="display:grid;grid-template-columns:1fr auto;gap:8px">
+      <input type="text" id="admin-cong-nome" placeholder="Nome da congregação">
+      <button class="btn" onclick="adminSalvarNome()">Salvar</button>
+    </div>
+  </div>
+
+  <!-- Administradores -->
+  <div class="settings-card">
+    <h3>Administradores</h3>
+    <p style="font-size:13px;color:var(--ink2);margin-bottom:12px">
+      Administradores têm acesso completo ao app — programação, mecânicas, campo e configurações.
+    </p>
+    <div id="admin-admins-list" style="margin-bottom:12px"></div>
+    <div style="display:grid;grid-template-columns:1fr auto;gap:8px">
+      <input type="email" id="admin-new-admin" placeholder="email@gmail.com do novo administrador">
+      <button class="btn" onclick="adminAddAdmin()">+ Adicionar</button>
+    </div>
+  </div>
+
+  <!-- Publicadores cadastrados com email -->
+  <div class="settings-card">
+    <h3>Publicadores com acesso</h3>
+    <p style="font-size:13px;color:var(--ink2);margin-bottom:12px">
+      Publicadores com e-mail cadastrado podem fazer login e ver suas designações.
+    </p>
+    <div id="admin-pub-list"></div>
+    <div style="margin-top:10px;font-size:12px;color:var(--muted)">
+      Para adicionar publicadores, edite a ficha da pessoa em <strong>Pessoas</strong> e preencha o campo E-mail.
+    </div>
+  </div>
+
+  <!-- ID da congregação -->
+  <div class="settings-card">
+    <h3>ID da congregação</h3>
+    <p style="font-size:13px;color:var(--ink2);margin-bottom:8px">
+      Compartilhe este ID com outra congregação que queira usar o Cronos. Com o ID, eles podem acessar os dados desta congregação.
+    </p>
+    <div id="admin-cong-id" style="font-family:monospace;font-size:13px;background:var(--line);padding:8px 12px;border-radius:2px;user-select:all"></div>
+  </div>
 </section>
 
 <!-- ══ SETTINGS ══ -->
@@ -1172,6 +1222,7 @@ function switchView(name){
     document.getElementById('cfg-start').value=state.startTime||'19:00';
     renderEventsList();
   }
+  if(name==='admin') renderAdminPanel();
   if(name==='escala')    renderEscala();
   if(name==='mecanicas') renderMecanicas();
   if(name==='limpeza')   renderLimpeza();
@@ -1743,7 +1794,11 @@ function renderPeople(){
       <td><span class="tag ${ROLES[p.role].cls}">${ROLES[p.role].label}</span></td>
       <td>${p.reading?'✓':'—'}</td>
       <td>${p.talks?'✓':'—'}</td>
-      <td style="font-size:12px;color:var(--muted)">${unavailStr!=='—'?`<span style="color:var(--warn)">Indisponível: ${unavailStr}</span><br>`:''}Habilitações: ${abilitiesStr}</td>
+      <td style="font-size:12px;color:var(--muted)">
+        ${p.email?`<span style="color:var(--elder)">${esc(p.email)}</span><br>`:''}
+        ${unavailStr!=='—'?`<span style="color:var(--warn)">Indisponível: ${unavailStr}</span><br>`:''}
+        Habilitações: ${abilitiesStr}
+      </td>
       <td style="text-align:right">
         <button class="icon-btn" onclick="openPersonModal('${p.id}')">✎</button>
         <button class="icon-btn danger" onclick="deletePerson('${p.id}')">×</button>
@@ -4349,80 +4404,221 @@ function onUserLoaded(){
   updateHeaderCong();
   updateUserInfo({name: currentUser?.displayName, pic: currentUser?.photoURL});
   if(isAdminUser){
+    // Mostra aba Admin
+    const tabAdmin = document.getElementById('tab-admin');
+    if(tabAdmin) tabAdmin.style.display='';
     renderSchedule();
     renderPeople();
     checkFirstAccess();
   } else {
-    // Publicador: mostra só a tela de designações
+    // Publicador: esconde aba admin, mostra só designações
+    const tabAdmin = document.getElementById('tab-admin');
+    if(tabAdmin) tabAdmin.style.display='none';
     showPublicadorView();
   }
 }
 
 // ── TELA DO PUBLICADOR ──────────────────────────────
 function showPublicadorView(){
-  // Esconde todas as abas de admin
-  document.querySelectorAll('.tabs, .week-bar').forEach(el=>el.style.display='none');
-  document.querySelector('.hdr-btns')?.querySelectorAll('button:not(#theme-btn):not(#user-avatar)')
-    .forEach(btn=>{ if(!['↩','🔍','❓'].includes(btn.textContent.trim())) btn.style.display='none'; });
+  // Esconde abas de admin — mostra só o essencial
+  document.querySelectorAll('.tabs').forEach(el=>el.style.display='none');
+  document.querySelectorAll('.week-bar').forEach(el=>el.style.display='none');
+  document.querySelectorAll('.hdr-btns button').forEach(btn=>{
+    const t=btn.textContent.trim();
+    if(!['🌙','☀','↩','🔍','❓'].includes(t) && btn.id!=='user-avatar' && btn.id!=='theme-btn')
+      btn.style.display='none';
+  });
 
-  // Mostra só a seção de programação (readonly)
-  switchView('programacao');
-
-  // Injeta banner de publicador
-  const main = document.querySelector('main') || document.body;
-  const banner = document.createElement('div');
-  banner.style.cssText='background:var(--surface);border:1px solid var(--line);border-radius:3px;padding:16px 20px;margin-bottom:16px';
-  banner.innerHTML=`
-    <div style="display:flex;align-items:center;gap:12px">
-      <div style="font-size:24px">👤</div>
-      <div>
-        <div style="font-weight:600;font-size:15px">${esc(currentUser?.displayName||'')}</div>
-        <div style="font-size:12px;color:var(--muted)">Suas designações este mês</div>
-      </div>
-    </div>
-    <div id="pub-designacoes" style="margin-top:12px"></div>`;
-  main.prepend(banner);
-  renderPublicadorDesignacoes();
+  // Mostra interface dedicada do publicador
+  const mainEl = document.getElementById('view-programacao') || document.querySelector('main');
+  if(mainEl) mainEl.innerHTML = buildPublicadorHTML();
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  if(mainEl) mainEl.classList.add('active');
 }
 
-function renderPublicadorDesignacoes(){
-  const el = document.getElementById('pub-designacoes');
-  if(!el) return;
+function buildPublicadorHTML(){
+  const person = state.people.find(p=>
+    p.email && p.email.toLowerCase() === (currentUser?.email||'').toLowerCase()
+  );
+  const nome = person?.name || currentUser?.displayName || 'Publicador';
+  const cong = state.congregacao || 'Congregação';
 
-  // Encontra a pessoa pelo email
-  const person = state.people.find(p=>p.email===currentUser?.email);
-  if(!person){
-    el.innerHTML='<p style="color:var(--muted);font-size:13px">Você ainda não foi cadastrado pela administração.</p>';
-    return;
-  }
-
-  const designacoes=[];
-  for(let n=0;n<5;n++){
-    const w=state.weeks[n];
-    if(!w.DATA) continue;
-    for(const part of PARTS){
-      if(part.type==='person'&&w[part.tag]===person.id)
-        designacoes.push({semana:w.DATA,parte:part.label,hora:w['H_'+part.tag]||''});
-      if(part.type==='pair'){
-        if(w[part.tag]?.a===person.id) designacoes.push({semana:w.DATA,parte:part.label+' (Estudante)',hora:w['H_'+part.tag]||''});
-        if(w[part.tag]?.b===person.id) designacoes.push({semana:w.DATA,parte:part.label+' (Ajudante)',hora:w['H_'+part.tag]||''});
+  // Reúne designações
+  const designacoes = [];
+  if(person){
+    for(let n=0;n<5;n++){
+      const w = state.weeks[n];
+      if(!w.DATA && !w.N_CANTICO1) continue;
+      const semLabel = w.DATA || `Semana ${n+1}`;
+      for(const part of PARTS){
+        if(part.type==='person' && w[part.tag]===person.id){
+          const hora = w['H_'+part.tag]||'';
+          designacoes.push({semana:semLabel, parte:part.label, hora, secao:part.section});
+        }
+        if(part.type==='pair'){
+          if(w[part.tag]?.a===person.id)
+            designacoes.push({semana:semLabel, parte:part.label+' — Estudante', hora:w['H_'+part.tag]||'', secao:part.section});
+          if(w[part.tag]?.b===person.id)
+            designacoes.push({semana:semLabel, parte:part.label+' — Ajudante', hora:w['H_'+part.tag]||'', secao:part.section});
+        }
+      }
+      // Mecânicas
+      for(const r of [{key:'mds',label:'Meio de Semana'},{key:'fds',label:'Fim de Semana'}]){
+        for(const f of MECANICA_FUNCOES){
+          if(state.mecanicas[n]?.[r.key]?.[f.key]===person.id)
+            designacoes.push({semana:semLabel, parte:`${f.label} — ${r.label}`, hora:'', secao:'Mecânicas'});
+        }
       }
     }
   }
 
-  if(!designacoes.length){
-    el.innerHTML='<p style="color:var(--muted);font-size:13px;font-style:italic">Nenhuma designação este mês.</p>';
-    return;
-  }
+  const secaoIcon = {
+    'Abertura':'🎵','Tesouros da Palavra de Deus':'💎',
+    'Faça Seu Melhor no Ministério':'🏠','Nossa Vida Cristã':'✝️',
+    'Mecânicas':'🎛️'
+  };
 
-  el.innerHTML=designacoes.map(d=>`
-    <div style="display:flex;gap:12px;padding:10px 12px;background:#f7f5f0;border-radius:2px;margin-bottom:6px;align-items:center">
-      <span style="font-size:18px">📌</span>
-      <div>
-        <div style="font-size:13px;font-weight:500">${esc(d.parte)}</div>
-        <div style="font-size:12px;color:var(--muted)">${esc(d.semana)}${d.hora?' · '+d.hora:''}</div>
+  return `
+  <div style="max-width:600px;margin:0 auto;padding:24px 16px">
+    <!-- Header -->
+    <div style="text-align:center;margin-bottom:28px">
+      ${currentUser?.photoURL?`<img src="${currentUser.photoURL}" style="width:64px;height:64px;border-radius:50%;margin-bottom:12px;border:3px solid var(--accent)">`:
+        `<div style="width:64px;height:64px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 12px">👤</div>`}
+      <div style="font-family:'Fraunces',serif;font-size:24px;font-weight:500">${esc(nome)}</div>
+      <div style="font-size:13px;color:var(--muted);margin-top:2px">${esc(cong)}</div>
+    </div>
+
+    <!-- Designações -->
+    <div style="margin-bottom:24px">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:12px;font-weight:600">
+        Suas designações este mês
       </div>
-    </div>`).join('');
+      ${!person ? `
+        <div style="text-align:center;padding:32px;background:var(--surface);border:1px solid var(--line);border-radius:3px">
+          <div style="font-size:32px;margin-bottom:8px">📋</div>
+          <div style="color:var(--ink2);font-size:13px">Seu e-mail ainda não foi cadastrado.<br>
+          Entre em contato com o responsável da congregação.</div>
+        </div>` :
+      !designacoes.length ? `
+        <div style="text-align:center;padding:32px;background:var(--surface);border:1px solid var(--line);border-radius:3px">
+          <div style="font-size:32px;margin-bottom:8px">✅</div>
+          <div style="color:var(--ink2);font-size:13px">Nenhuma designação este mês ainda.</div>
+        </div>` :
+      designacoes.map(d=>`
+        <div style="display:flex;gap:14px;padding:14px 16px;background:var(--surface);border:1px solid var(--line);border-radius:3px;margin-bottom:8px;align-items:flex-start">
+          <div style="font-size:22px;min-width:32px;text-align:center">${secaoIcon[d.secao]||'📌'}</div>
+          <div style="flex:1">
+            <div style="font-weight:600;font-size:14px;color:var(--ink)">${esc(d.parte)}</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:3px">
+              ${esc(d.semana)}${d.hora?' · <strong>'+d.hora+'</strong>':''}
+            </div>
+          </div>
+        </div>`).join('')}
+    </div>
+
+    <!-- Info -->
+    <div style="font-size:11px;color:var(--muted);text-align:center;border-top:1px solid var(--line);padding-top:14px">
+      Cronos · Programador de Reunião · ${esc(cong)}
+    </div>
+  </div>`;
+}
+
+function renderPublicadorDesignacoes(){
+  const el = document.getElementById('view-programacao');
+  if(el) el.innerHTML = buildPublicadorHTML();
+}
+
+
+/* ════════════════════════════════════════
+   PAINEL DE ADMINISTRAÇÃO
+════════════════════════════════════════ */
+async function renderAdminPanel(){
+  if(!isAdminUser || !currentCongId || !window._fb) return;
+  const {fbDb, doc, getDoc} = window._fb;
+
+  // Carrega config atualizada
+  const configDoc = await getDoc(doc(fbDb, `congregacoes/${currentCongId}/config/config`));
+  const config = configDoc.exists() ? configDoc.data() : {};
+  const admins = config.admins||[];
+
+  // Info da congregação
+  const infoEl = document.getElementById('admin-cong-info');
+  if(infoEl) infoEl.innerHTML = `
+    <span style="color:var(--muted)">ID:</span> <code style="font-size:12px">${currentCongId}</code>
+    <span style="margin-left:12px;color:var(--muted)">Nome atual:</span> <strong>${esc(config.nome||'—')}</strong>`;
+
+  const nomeEl = document.getElementById('admin-cong-nome');
+  if(nomeEl) nomeEl.value = config.nome||'';
+
+  const idEl = document.getElementById('admin-cong-id');
+  if(idEl) idEl.textContent = currentCongId;
+
+  // Lista de admins
+  const adminsEl = document.getElementById('admin-admins-list');
+  if(adminsEl) adminsEl.innerHTML = admins.map((email,i)=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#fafaf7;border:1px solid var(--line);border-radius:2px;margin-bottom:6px">
+      <span style="flex:1;font-size:13px">${esc(email)}
+        ${email===currentUser?.email?'<span style="color:var(--muted);font-size:11px">(você)</span>':''}
+      </span>
+      ${email!==currentUser?.email?`<button class="icon-btn danger" onclick="adminRemoveAdmin('${esc(email)}')">×</button>`:''}
+    </div>`).join('') || '<p style="font-size:13px;color:var(--muted)">Nenhum administrador.</p>';
+
+  // Lista de publicadores com email
+  const pubEl = document.getElementById('admin-pub-list');
+  if(pubEl){
+    const comEmail = state.people.filter(p=>p.email);
+    pubEl.innerHTML = comEmail.length ? comEmail.map(p=>`
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#fafaf7;border:1px solid var(--line);border-radius:2px;margin-bottom:6px">
+        <span class="tag ${ROLES[p.role].cls}">${ROLES[p.role].short}</span>
+        <span style="flex:1;font-size:13px"><strong>${esc(p.name)}</strong>
+          <span style="color:var(--muted);margin-left:6px">${esc(p.email)}</span>
+        </span>
+      </div>`).join('') :
+      '<p style="font-size:13px;color:var(--muted);font-style:italic">Nenhum publicador com e-mail cadastrado ainda.</p>';
+  }
+}
+
+async function adminSalvarNome(){
+  const nome = document.getElementById('admin-cong-nome')?.value.trim();
+  if(!nome){ toast('Informe o nome',true); return; }
+  if(!window._fb || !currentCongId) return;
+  const {fbDb, doc, setDoc} = window._fb;
+  await setDoc(doc(fbDb,`congregacoes/${currentCongId}/config/config`),{nome},{merge:true});
+  state.congregacao = nome;
+  save();
+  updateHeaderCong();
+  toast('Nome atualizado');
+  renderAdminPanel();
+}
+
+async function adminAddAdmin(){
+  const email = document.getElementById('admin-new-admin')?.value.trim().toLowerCase();
+  if(!email || !email.includes('@')){ toast('E-mail inválido',true); return; }
+  if(!window._fb || !currentCongId) return;
+  const {fbDb, doc, getDoc, setDoc} = window._fb;
+  const configRef = doc(fbDb,`congregacoes/${currentCongId}/config/config`);
+  const configDoc = await getDoc(configRef);
+  const config = configDoc.exists()?configDoc.data():{};
+  const admins = config.admins||[];
+  if(admins.includes(email)){ toast('Este e-mail já é administrador',false); return; }
+  admins.push(email);
+  await setDoc(configRef,{admins},{merge:true});
+  document.getElementById('admin-new-admin').value='';
+  toast(`✓ ${email} adicionado como administrador`);
+  renderAdminPanel();
+}
+
+async function adminRemoveAdmin(email){
+  if(!confirm(`Remover ${email} dos administradores?`)) return;
+  if(!window._fb || !currentCongId) return;
+  const {fbDb, doc, getDoc, setDoc} = window._fb;
+  const configRef = doc(fbDb,`congregacoes/${currentCongId}/config/config`);
+  const configDoc = await getDoc(configRef);
+  const config = configDoc.exists()?configDoc.data():{};
+  const admins = (config.admins||[]).filter(a=>a!==email);
+  await setDoc(configRef,{admins},{merge:true});
+  toast(`${email} removido`);
+  renderAdminPanel();
 }
 
 /* ════════════════════════════════════════
