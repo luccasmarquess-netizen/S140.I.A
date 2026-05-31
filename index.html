@@ -4,10 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Cronos · Programador de Reunião</title>
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Cronos">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMTAwIDEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjIyIiBmaWxsPSIjNmIzNDEwIi8+CiAgPHRleHQgeD0iNTAiIHk9IjcyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIgogICAgZm9udC1mYW1pbHk9Ikdlb3JnaWEsc2VyaWYiIGZvbnQtc2l6ZT0iNjgiIGZvbnQtd2VpZ2h0PSI3MDAiCiAgICBmaWxsPSJ3aGl0ZSI+QzwvdGV4dD4KPC9zdmc+">
 <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMTAwIDEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjIyIiBmaWxsPSIjNmIzNDEwIi8+CiAgPHRleHQgeD0iNTAiIHk9IjcyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIgogICAgZm9udC1mYW1pbHk9Ikdlb3JnaWEsc2VyaWYiIGZvbnQtc2l6ZT0iNjgiIGZvbnQtd2VpZ2h0PSI3MDAiCiAgICBmaWxsPSJ3aGl0ZSI+QzwvdGV4dD4KPC9zdmc+">
 <meta name="theme-color" content="#6b3410">
-<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://accounts.google.com/gsi/client" async defer onload="initGoogleLogin()"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -214,6 +218,7 @@ table.t tr:hover td{background:#fafaf7}
   position:fixed;inset:0;background:var(--bg);
   display:flex;align-items:center;justify-content:center;
   z-index:9999;flex-direction:column;gap:16px;
+  transition:background .2s;
 ">
   <div style="text-align:center;margin-bottom:8px">
     <div style="font-family:'Fraunces',serif;font-size:36px;font-weight:500;color:var(--ink)">Cronos</div>
@@ -223,33 +228,8 @@ table.t tr:hover td{background:#fafaf7}
     <p style="font-size:13px;color:var(--ink2);margin-bottom:24px">
       Acesso restrito. Entre com sua conta Google autorizada.
     </p>
-    <!-- Inicialização GSI -->
-    <div id="g_id_onload"
-      data-client_id="708777989928-arcccurs3go3i3gv1r7s6gaj3svuh771.apps.googleusercontent.com"
-      data-callback="onGoogleLogin"
-      data-auto_select="false"
-      data-cancel_on_tap_outside="false">
-    </div>
-    <!-- Botão padrão GSI -->
-    <div class="g_id_signin"
-      data-type="standard"
-      data-size="large"
-      data-theme="outline"
-      data-text="sign_in_with"
-      data-shape="rectangular"
-      data-logo_alignment="left"
-      data-width="300">
-    </div>
-    <!-- Botão fallback caso GSI não renderize -->
-    <button id="google-fallback-btn" onclick="triggerGoogleLogin()" style="
-      display:none;margin-top:12px;width:300px;padding:10px 16px;
-      background:#fff;border:1px solid #dadce0;border-radius:4px;
-      font-family:inherit;font-size:14px;cursor:pointer;
-      display:flex;align-items:center;justify-content:center;gap:10px;
-    ">
-      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
-      Entrar com Google
-    </button>
+    <!-- Container do botão Google (preenchido por initGoogleLogin) -->
+    <div id="google-btn-container" style="display:flex;justify-content:center;min-height:44px;margin-bottom:4px"></div>
     <div id="lock-error" style="display:none;margin-top:16px;font-size:12px;color:var(--err);padding:8px;background:#fee;border-radius:2px">
       ⚠ Conta não autorizada. Entre em contato com o administrador.
     </div>
@@ -266,12 +246,24 @@ table.t tr:hover td{background:#fafaf7}
   <h1>Cronos <small id="header-cong">Programador de Reunião</small></h1>
   <div class="hdr-btns">
     <button onclick="toggleTheme()" id="theme-btn" title="Alternar tema">🌙</button>
+    <button onclick="undo()" title="Desfazer última ação (Ctrl+Z)">↩</button>
+    <button onclick="openBusca()" title="Buscar designações de uma pessoa">🔍</button>
+    <button onclick="openGuia()" title="Guia de uso">❓</button>
     <button onclick="openImportModal()">📖 Importar apostila</button>
-    <button onclick="exportData()">💾 Exportar</button>
-    <button onclick="document.getElementById('imp-file').click()">📂 Importar</button>
+    <div style="position:relative;display:inline-block" id="export-menu-wrap">
+      <button onclick="toggleExportMenu()" title="Opções de exportação">💾 Backup ▾</button>
+      <div id="export-menu" style="display:none;position:absolute;top:100%;left:0;background:var(--surface);border:1px solid var(--line);border-radius:3px;min-width:200px;z-index:100;box-shadow:0 4px 16px rgba(0,0,0,.12)">
+        <div onclick="exportData();closeExportMenu()" style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--line)" onmouseover="this.style.background='var(--line)'" onmouseout="this.style.background=''">📦 Tudo (backup completo)</div>
+        <div onclick="exportModulo('pessoas');closeExportMenu()" style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--line)" onmouseover="this.style.background='var(--line)'" onmouseout="this.style.background=''">👥 Só pessoas</div>
+        <div onclick="exportModulo('programacao');closeExportMenu()" style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--line)" onmouseover="this.style.background='var(--line)'" onmouseout="this.style.background=''">📅 Só programação</div>
+        <div onclick="exportModulo('mecanicas');closeExportMenu()" style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--line)" onmouseover="this.style.background='var(--line)'" onmouseout="this.style.background=''">🔧 Só mecânicas</div>
+        <div onclick="exportModulo('campo');closeExportMenu()" style="padding:10px 14px;cursor:pointer;font-size:13px" onmouseover="this.style.background='var(--line)'" onmouseout="this.style.background=''">🏘 Só campo</div>
+      </div>
+    </div>
+    <button onclick="document.getElementById('imp-file').click()" title="Restaura dados de um backup .json">📂 Restaurar</button>
     <input type="file" id="imp-file" accept=".json" style="display:none" onchange="importData(event)">
     <button onclick="openPdfModal()">🖨 PDF</button>
-    <button class="primary" onclick="generateDocx()">📄 Gerar .docx</button>
+    <button class="primary" onclick="generateDocx()" title="Gera o formulário S-140 preenchido para imprimir">📄 Gerar S-140</button>
   </div>
 </header>
 
@@ -280,6 +272,7 @@ table.t tr:hover td{background:#fafaf7}
   <button data-view="people" onclick="switchView('people')">Pessoas</button>
   <button data-view="escala" onclick="switchView('escala')">Escala</button>
   <button data-view="mecanicas" onclick="switchView('mecanicas')">Mecânicas</button>
+  <button data-view="campo" onclick="switchView('campo')">Campo</button>
   <button data-view="limpeza" onclick="switchView('limpeza')">Limpeza</button>
   <button data-view="settings" onclick="switchView('settings')">Configurações</button>
 </nav>
@@ -291,6 +284,7 @@ table.t tr:hover td{background:#fafaf7}
   <div id="val-container"></div>
   <div class="week-bar">
     <div class="week-tabs" id="week-tabs"></div>
+    <button class="btn ghost sm" onclick="arquivarMes()">📦 Arquivar mês</button>
     <button class="btn ghost sm" onclick="recalcTimes()">⏱ Recalcular horários</button>
     <button class="btn sm" onclick="sugerirDesignacoes()" style="background:var(--servant);border-color:var(--servant)">✨ Sugerir designações</button>
     <button class="btn ghost sm" onclick="clearWeek()">🗑 Limpar semana</button>
@@ -327,7 +321,7 @@ table.t tr:hover td{background:#fafaf7}
 <section class="view" id="view-escala">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
     <h2 style="font-family:'Fraunces',serif;font-weight:500;font-size:22px">Relatório de Escala</h2>
-    <div style="display:flex;gap:8px">
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
       <select id="escala-filter" onchange="renderEscala()" style="padding:7px 10px;border:1px solid var(--line);background:var(--surface);font-family:inherit;font-size:13px;border-radius:2px">
         <option value="">Todas as funções</option>
         <option value="elder">Anciãos</option>
@@ -335,8 +329,13 @@ table.t tr:hover td{background:#fafaf7}
         <option value="publisher">Publicadores</option>
         <option value="female">Publicadoras</option>
       </select>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+        <input type="checkbox" id="escala-sem-desig" onchange="renderEscala()">
+        Sem designação
+      </label>
     </div>
   </div>
+  <div id="escala-sem-desig-banner" style="display:none;margin-bottom:16px"></div>
   <div id="escala-container"></div>
 </section>
 
@@ -344,9 +343,42 @@ table.t tr:hover td{background:#fafaf7}
 <section class="view" id="view-mecanicas">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
     <h2 style="font-family:'Fraunces',serif;font-weight:500;font-size:22px">Mecânicas</h2>
-    <button class="btn sm" onclick="sugerirMecanicas()" style="background:var(--servant);border-color:var(--servant)">✨ Sugerir designações</button>
+    <div style="display:flex;gap:8px">
+      <button class="btn ghost sm" onclick="printMecanicas()">🖨 Imprimir</button>
+      <button class="btn sm" onclick="sugerirMecanicas()" style="background:var(--servant);border-color:var(--servant)">✨ Sugerir designações</button>
+    </div>
   </div>
   <div id="mecanicas-container"></div>
+</section>
+
+<!-- ══ CAMPO ══ -->
+<section class="view" id="view-campo">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
+    <h2 style="font-family:'Fraunces',serif;font-weight:500;font-size:22px">Saídas de Campo</h2>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn ghost sm" onclick="arquivarCampo()">📦 Arquivar mês</button>
+      <button class="btn ghost sm" onclick="printCampo()">🖨 Imprimir lista</button>
+      <button class="btn sm" onclick="sugerirCampo()" style="background:var(--servant);border-color:var(--servant)">✨ Sugerir dirigentes</button>
+    </div>
+  </div>
+
+  <!-- Seletor de mês/ano -->
+  <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
+    <select id="campo-month" onchange="renderCampo()" style="padding:7px 10px;border:1px solid var(--line);background:var(--surface);font-family:inherit;font-size:13px;border-radius:2px">
+      <option value="1">Janeiro</option><option value="2">Fevereiro</option>
+      <option value="3">Março</option><option value="4">Abril</option>
+      <option value="5">Maio</option><option value="6">Junho</option>
+      <option value="7">Julho</option><option value="8">Agosto</option>
+      <option value="9">Setembro</option><option value="10">Outubro</option>
+      <option value="11">Novembro</option><option value="12">Dezembro</option>
+    </select>
+    <input type="number" id="campo-year" value="2026" min="2024" max="2030"
+      onchange="renderCampo()"
+      style="width:80px;padding:7px 10px;border:1px solid var(--line);background:var(--surface);font-family:inherit;font-size:13px;border-radius:2px">
+    <button class="btn ghost sm" onclick="openCampoConfig()">⚙ Configurar dias e locais</button>
+  </div>
+
+  <div id="campo-container"></div>
 </section>
 
 <!-- ══ LIMPEZA ══ -->
@@ -411,6 +443,11 @@ table.t tr:hover td{background:#fafaf7}
       </div>
       <button class="btn" onclick="addEvent()" style="align-self:end">+ Adicionar</button>
     </div>
+  </div>
+
+  <div class="settings-card">
+    <h3>Campo — Dias e locais padrão</h3>
+    <p style="font-size:13px;color:var(--ink2);margin-bottom:12px">Configure na aba Campo usando o botão ⚙ Configurar.</p>
   </div>
 
   <div class="settings-card">
@@ -542,6 +579,228 @@ table.t tr:hover td{background:#fafaf7}
 
 <div class="toast" id="toast"></div>
 
+<!-- Modal Busca Global -->
+<div class="modal-bg" id="busca-bg" onclick="if(event.target===this)closeBusca()">
+<div class="modal" style="max-width:560px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+    <h2 style="margin:0">Busca de designações</h2>
+    <button class="icon-btn" onclick="closeBusca()" style="font-size:18px">×</button>
+  </div>
+  <input type="text" id="busca-input" placeholder="Digite o nome da pessoa..."
+    oninput="renderBusca()" style="margin-bottom:14px">
+  <div id="busca-results"></div>
+</div>
+</div>
+
+<!-- Modal Guia de Uso -->
+<div class="modal-bg" id="guia-bg" onclick="if(event.target===this)closeGuia()">
+<div class="modal" style="max-width:620px;max-height:85vh;overflow-y:auto">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+    <h2 style="margin:0">Guia de Uso — Cronos</h2>
+    <button class="icon-btn" onclick="closeGuia()" style="font-size:18px">×</button>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:16px;font-size:13px;color:var(--ink2);line-height:1.6">
+
+    <details open>
+      <summary style="cursor:pointer;font-weight:600;color:var(--ink);font-size:14px;margin-bottom:6px">🚀 Primeiro acesso</summary>
+      <ol style="margin-left:16px;display:flex;flex-direction:column;gap:4px">
+        <li>Faça login com sua conta Google</li>
+        <li>Na tela de boas-vindas, escolha entre nova congregação ou importar dados existentes</li>
+        <li>Vá em <strong>Pessoas</strong> e cadastre os membros (ou importe um .txt)</li>
+        <li>Em <strong>Configurações</strong>, defina o nome da congregação e horário de início</li>
+        <li>Clique em <strong>📖 Importar apostila</strong> para buscar os temas do jw.org automaticamente</li>
+      </ol>
+    </details>
+
+    <details>
+      <summary style="cursor:pointer;font-weight:600;color:var(--ink);font-size:14px;margin-bottom:6px">📅 Programação (S-140)</summary>
+      <ul style="margin-left:16px;display:flex;flex-direction:column;gap:4px">
+        <li>Use <strong>✨ Sugerir designações</strong> para preencher automaticamente seguindo as regras de rotatividade</li>
+        <li>Clique em qualquer campo de designação para ver a lista filtrada por elegibilidade</li>
+        <li>O picker mostra <span style="color:var(--ok)">novo</span> = nunca designado este mês, <span style="color:var(--warn)">3×</span> = 3 designações (atenção)</li>
+        <li>⚠ no nome = conflito (mesma seção na mesma semana)</li>
+        <li>Use <strong>⏱ Recalcular horários</strong> após configurar o horário de início</li>
+        <li>Use <strong>📦 Arquivar mês</strong> ao finalizar — salva no histórico e limpa para o próximo mês</li>
+      </ul>
+    </details>
+
+    <details>
+      <summary style="cursor:pointer;font-weight:600;color:var(--ink);font-size:14px;margin-bottom:6px">👥 Pessoas e habilitações</summary>
+      <ul style="margin-left:16px;display:flex;flex-direction:column;gap:4px">
+        <li>Cada pessoa tem uma <strong>função</strong> (ancião, servo, publicador, publicadora) que define onde pode aparecer</li>
+        <li><strong>Habilitações</strong>: clique nas partes que a pessoa pode fazer. Vazio = pode tudo</li>
+        <li>Publicadoras só veem a habilitação <em>Faça Seu Melhor</em></li>
+        <li><strong>Semanas indisponíveis</strong>: marque S1-S5 quando a pessoa estiver ausente</li>
+        <li>Importe via .txt: uma pessoa por linha, formato <code>Nome, função</code></li>
+      </ul>
+    </details>
+
+    <details>
+      <summary style="cursor:pointer;font-weight:600;color:var(--ink);font-size:14px;margin-bottom:6px">⚙ Mecânicas e Limpeza</summary>
+      <ul style="margin-left:16px;display:flex;flex-direction:column;gap:4px">
+        <li>Na aba <strong>Mecânicas</strong>: designe Áudio, Vídeo, Microfone, Palco e Indicador por semana, para Meio de Semana e Fim de Semana separadamente</li>
+        <li>Marque <strong>Mecânicas (áudio/vídeo)</strong> na ficha da pessoa para ela aparecer nesta aba</li>
+        <li>Na aba <strong>Limpeza</strong>: cadastre grupos fixos com os membros e use <strong>🔄 Rotacionar</strong> para distribuir automaticamente</li>
+        <li>Clique em <strong>🖨 Imprimir</strong> em Mecânicas para gerar a folha no formato padrão</li>
+      </ul>
+    </details>
+
+    <details>
+      <summary style="cursor:pointer;font-weight:600;color:var(--ink);font-size:14px;margin-bottom:6px">🏘 Campo</summary>
+      <ul style="margin-left:16px;display:flex;flex-direction:column;gap:4px">
+        <li>Configure os <strong>dias recorrentes</strong> e <strong>locais</strong> em ⚙ Configurar</li>
+        <li>Selecione o mês — a tabela mostra todos os dias daquele mês automaticamente</li>
+        <li>Use <strong>✨ Sugerir dirigentes</strong> para distribuir automaticamente</li>
+        <li>Imprima a <strong>Lista de Grupo</strong> no formato padrão com 🖨</li>
+      </ul>
+    </details>
+
+    <details>
+      <summary style="cursor:pointer;font-weight:600;color:var(--ink);font-size:14px;margin-bottom:6px">💾 Dados e backup</summary>
+      <ul style="margin-left:16px;display:flex;flex-direction:column;gap:4px">
+        <li>Os dados são salvos <strong>automaticamente</strong> no navegador a cada alteração</li>
+        <li>Use <strong>💾 Exportar</strong> regularmente para fazer backup (.json)</li>
+        <li>Para usar em outro dispositivo: Exportar → enviar o arquivo → Importar no novo dispositivo</li>
+        <li>Use <strong>📦 Arquivar mês</strong> ao fechar o mês — o histórico mantém os últimos 2 meses para a sugestão automática considerar</li>
+        <li>Cada congregação usa o mesmo site com seus próprios dados no dispositivo</li>
+      </ul>
+    </details>
+
+    <details>
+      <summary style="cursor:pointer;font-weight:600;color:var(--ink);font-size:14px;margin-bottom:6px">🎉 Eventos especiais</summary>
+      <ul style="margin-left:16px;display:flex;flex-direction:column;gap:4px">
+        <li>Em <strong>Configurações → Eventos especiais</strong>, cadastre Assembleias, Congressos e Visitas do Superintendente</li>
+        <li><strong>Sem reunião</strong>: cancela a semana inteira — aparece banner na programação</li>
+        <li><strong>Visita do Superintendente</strong>: programação normal, EBC substituído pelo discurso. Adicione o tema do discurso no banner da semana</li>
+      </ul>
+    </details>
+
+  </div>
+
+  <div style="margin-top:20px;text-align:right">
+    <button class="btn" onclick="closeGuia()">Fechar</button>
+  </div>
+</div>
+</div>
+
+<!-- Tela de boas-vindas (primeiro acesso) -->
+<div id="welcome-screen" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1500;display:none;align-items:center;justify-content:center;padding:16px">
+  <div style="background:var(--surface);max-width:520px;width:100%;border-radius:4px;overflow:hidden">
+    <!-- Header -->
+    <div style="background:var(--accent);padding:24px 28px">
+      <div style="font-family:'Fraunces',serif;font-size:28px;font-weight:500;color:#fff">Bem-vindo ao Cronos</div>
+      <div style="font-size:13px;color:rgba(255,255,255,.8);margin-top:4px">Programador de Reunião</div>
+    </div>
+    <!-- Conteúdo -->
+    <div style="padding:24px 28px">
+      <p style="font-size:14px;color:var(--ink2);margin-bottom:20px">
+        É o seu primeiro acesso. Como deseja começar?
+      </p>
+
+      <!-- Opção 1: Nova congregação -->
+      <div id="welcome-opt1" onclick="welcomeNova()" style="
+        border:2px solid var(--line);border-radius:3px;padding:16px;margin-bottom:12px;
+        cursor:pointer;transition:all .15s;
+      " onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--line)'">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="font-size:28px">🆕</div>
+          <div>
+            <div style="font-weight:600;font-size:14px;color:var(--ink)">Configurar nova congregação</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px">Começar do zero — cadastre as pessoas e configure o app</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Opção 2: Importar dados existentes -->
+      <div id="welcome-opt2" onclick="document.getElementById('welcome-import-file').click()" style="
+        border:2px solid var(--line);border-radius:3px;padding:16px;margin-bottom:12px;
+        cursor:pointer;transition:all .15s;
+      " onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--line)'">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="font-size:28px">📂</div>
+          <div>
+            <div style="font-weight:600;font-size:14px;color:var(--ink)">Já tenho dados salvos</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px">Importar arquivo .json exportado anteriormente</div>
+          </div>
+        </div>
+        <input type="file" id="welcome-import-file" accept=".json" style="display:none" onchange="welcomeImport(event)">
+      </div>
+
+      <!-- Opção 3: Importar pessoas TXT -->
+      <div id="welcome-opt3" onclick="document.getElementById('welcome-txt-file').click()" style="
+        border:2px solid var(--line);border-radius:3px;padding:16px;
+        cursor:pointer;transition:all .15s;
+      " onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--line)'">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="font-size:28px">📄</div>
+          <div>
+            <div style="font-weight:600;font-size:14px;color:var(--ink)">Importar lista de pessoas (.txt)</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px">Tenho um arquivo .txt com os nomes e funções da congregação</div>
+          </div>
+        </div>
+        <input type="file" id="welcome-txt-file" accept=".txt" style="display:none" onchange="welcomeImportTxt(event)">
+      </div>
+
+      <div style="margin-top:16px;padding:10px 14px;background:#f7f5f0;border-radius:2px;font-size:12px;color:var(--muted)">
+        💡 <strong>Dica:</strong> O Cronos funciona por dispositivo. Cada responsável da congregação deve exportar os dados e importar no seu dispositivo. Use <strong>💾 Exportar</strong> para fazer backup a qualquer momento.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Campo Config -->
+<div class="modal-bg" id="campo-config-bg" onclick="if(event.target===this)closeCampoConfig()">
+<div class="modal" style="max-width:580px">
+  <h2>Configurar Saídas de Campo</h2>
+
+  <div class="form-row">
+    <label>Locais de pregação</label>
+    <div id="locais-list" style="margin-bottom:8px"></div>
+    <div style="display:grid;grid-template-columns:1fr auto;gap:8px">
+      <input type="text" id="local-input" placeholder="Ex: Poloni, Junqueira, Rural">
+      <button class="btn" onclick="addLocal()">+ Adicionar</button>
+    </div>
+  </div>
+
+  <div class="form-row" style="margin-top:16px">
+    <label>Dias e horários recorrentes</label>
+    <div id="dias-list" style="margin-bottom:8px"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:end">
+      <div>
+        <label style="font-size:11px;color:var(--muted)">Dia da semana</label>
+        <select id="dia-semana" style="width:100%;padding:7px 9px;border:1px solid var(--line);font-family:inherit;font-size:13px;border-radius:2px">
+          <option value="0">Domingo</option>
+          <option value="1">Segunda</option>
+          <option value="2">Terça</option>
+          <option value="3">Quarta</option>
+          <option value="4">Quinta</option>
+          <option value="5">Sexta</option>
+          <option value="6">Sábado</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:11px;color:var(--muted)">Período</label>
+        <select id="dia-periodo" style="width:100%;padding:7px 9px;border:1px solid var(--line);font-family:inherit;font-size:13px;border-radius:2px">
+          <option value="Manhã">Manhã</option>
+          <option value="Tarde">Tarde</option>
+          <option value="Noite">Noite</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:11px;color:var(--muted)">Horário</label>
+        <input type="text" id="dia-hora" placeholder="08:15" style="padding:7px 9px;border:1px solid var(--line);font-family:inherit;font-size:13px;border-radius:2px;width:100%">
+      </div>
+      <button class="btn" onclick="addDia()" style="align-self:end">+</button>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn" onclick="closeCampoConfig();renderCampo()">Fechar</button>
+  </div>
+</div>
+</div>
+
 <!-- ══════════════ PRINT AREA ══════════════ -->
 
 
@@ -551,6 +810,9 @@ table.t tr:hover td{background:#fafaf7}
    CONSTANTES / ESQUEMA
 ════════════════════════════════════════ */
 const STORAGE_KEY = 's140-v2';
+const _undoStack = []; // pilha de estados para desfazer
+const UNDO_LIMIT = 10;
+const APP_DATA_VERSION = '1.0.0'; // versão do esquema de dados
 
 const ROLES = {
   elder:    { label:'Ancião',         short:'A',  cls:'elder'   },
@@ -682,24 +944,71 @@ function loadState(){
     if(!s.mecanicas) s.mecanicas = emptyMecanicas();
     if(!s.grupos) s.grupos=[];
     if(!s.limpeza) s.limpeza = Array(5).fill(null).map(()=>({grupo:null}));
-    // Migração: converte EBC_DUPLA (par antigo) para EBC_DIRIGENTE + EBC_LEITOR
+    if(!s.campoLocais) s.campoLocais=[];
+    if(!s.campoDias) s.campoDias=[];
+    if(!s.campoDesignacoes) s.campoDesignacoes={};
+    if(!s.campoHistorico) s.campoHistorico=[];
+    if(!s.historico) s.historico=[];  // array de {mes, ano, weeks, label}
+    // ── Migrações de versão ──────────────────────────────────
+    // v1: EBC_DUPLA → EBC_DIRIGENTE + EBC_LEITOR
     if(s.weeks){
       for(const w of s.weeks){
-        // Migra qualquer forma do campo antigo
         if(w.EBC_DUPLA !== undefined || w.EBC_DIRIGENTE === undefined){
-          const old = w.EBC_DUPLA;
-          if(!w.EBC_DIRIGENTE) w.EBC_DIRIGENTE = old?.a || null;
-          if(!w.EBC_LEITOR)    w.EBC_LEITOR    = old?.b || null;
+          const oldEbc = w.EBC_DUPLA;
+          if(!w.EBC_DIRIGENTE) w.EBC_DIRIGENTE = oldEbc?.a || null;
+          if(!w.EBC_LEITOR)    w.EBC_LEITOR    = oldEbc?.b || null;
           delete w.EBC_DUPLA;
+        }
+        // Garante FSM1_DUPLA_SP existe (era FSM1_PRESIDENTE_SP)
+        if(w.FSM1_PRESIDENTE_SP !== undefined && w.FSM1_DUPLA_SP === undefined){
+          w.FSM1_DUPLA_SP = {a: w.FSM1_PRESIDENTE_SP, b: null};
+          delete w.FSM1_PRESIDENTE_SP;
+        }
+        // Garante todos os campos novos existem
+        const empty = emptyWeek();
+        for(const key of Object.keys(empty)){
+          if(w[key] === undefined) w[key] = empty[key];
         }
       }
     }
+    // Garante campos de configuração novos
+    if(s.mecanicas){
+      for(let n=0;n<5;n++){
+        if(!s.mecanicas[n]) s.mecanicas[n]={};
+        for(const r of ['mds','fds']){
+          if(!s.mecanicas[n][r]) s.mecanicas[n][r]={};
+          for(const f of ['audio','video','microfone','palco','indicador']){
+            if(s.mecanicas[n][r][f]===undefined) s.mecanicas[n][r][f]=null;
+          }
+        }
+      }
+    }
+    s._dataVersion = APP_DATA_VERSION;
     return s;
   } catch(e){ return {congregacao:'',startTime:'19:00',people:seedPeople(),weeks:[emptyWeek(),emptyWeek(),emptyWeek(),emptyWeek(),emptyWeek()]}; }
 }
 
 let state = loadState();
-function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+function save(){
+  // Empilha estado atual para desfazer
+  _undoStack.push(JSON.stringify(state));
+  if(_undoStack.length > UNDO_LIMIT) _undoStack.shift();
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function undo(){
+  if(_undoStack.length < 2){ toast('Nada para desfazer',false); return; }
+  _undoStack.pop(); // remove estado atual
+  const prev = _undoStack[_undoStack.length-1];
+  if(!prev){ toast('Nada para desfazer',false); return; }
+  try{
+    state = JSON.parse(prev);
+    localStorage.setItem(STORAGE_KEY, prev);
+    renderSchedule();
+    renderPeople();
+    toast('↩ Ação desfeita');
+  }catch(e){ toast('Erro ao desfazer',true); }
+}
 
 /* ════════════════════════════════════════
    ELEGIBILIDADE
@@ -820,6 +1129,13 @@ function switchView(name){
   if(name==='escala')    renderEscala();
   if(name==='mecanicas') renderMecanicas();
   if(name==='limpeza')   renderLimpeza();
+  if(name==='campo'){
+    const now=new Date();
+    const ms=document.getElementById('campo-month');
+    const ys=document.getElementById('campo-year');
+    if(ms&&!ms._init){ms.value=now.getMonth()+1;ys.value=now.getFullYear();ms._init=true;}
+    renderCampo();
+  }
 }
 function toggleTheme(){
   const isDark = document.documentElement.getAttribute('data-theme')==='dark';
@@ -1067,9 +1383,15 @@ function renderField(n, part){
   if(part.type==='person')
     return renderPicker(n, part, v, null, warnCls);
   if(part.type==='pair')
-    return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-      ${renderPicker(n,part,v?.a,'a',warnCls)}
-      ${renderPicker(n,part,v?.b,'b',warnCls)}
+    return `<div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        ${renderPicker(n,part,v?.a,'a',warnCls)}
+        ${renderPicker(n,part,v?.b,'b',warnCls)}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:2px">
+        <span style="font-size:10px;color:var(--muted);text-align:center">Estudante / Principal</span>
+        <span style="font-size:10px;color:var(--muted);text-align:center">Ajudante</span>
+      </div>
     </div>`;
   return '';
 }
@@ -2098,6 +2420,368 @@ function getEventForWeek(year, month, dayStart){
 
 
 
+
+/* ════════════════════════════════════════
+   SAÍDAS DE CAMPO
+════════════════════════════════════════ */
+
+const DIAS_SEMANA = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+const DIAS_SEMANA_ABBR = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+
+function openCampoConfig(){
+  renderLocaisList();
+  renderDiasList();
+  document.getElementById('campo-config-bg').classList.add('open');
+}
+function closeCampoConfig(){ document.getElementById('campo-config-bg').classList.remove('open'); }
+
+// ── Locais ──
+function renderLocaisList(){
+  const el = document.getElementById('locais-list');
+  if(!el) return;
+  const locais = state.campoLocais||[];
+  if(!locais.length){ el.innerHTML='<p style="font-size:12px;color:var(--muted);font-style:italic">Nenhum local cadastrado.</p>'; return; }
+  el.innerHTML = locais.map((l,i)=>`
+    <div style="display:inline-flex;align-items:center;gap:4px;margin:3px;padding:4px 10px;background:var(--line);border-radius:10px;font-size:12px">
+      ${esc(l)} <button onclick="removeLocal(${i})" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px;line-height:1;padding:0 0 0 4px">×</button>
+    </div>`).join('');
+}
+function addLocal(){
+  const v = document.getElementById('local-input').value.trim();
+  if(!v) return;
+  if(!state.campoLocais) state.campoLocais=[];
+  if(!state.campoLocais.includes(v)) state.campoLocais.push(v);
+  save(); renderLocaisList();
+  document.getElementById('local-input').value='';
+}
+function removeLocal(i){ state.campoLocais.splice(i,1); save(); renderLocaisList(); }
+
+// ── Dias recorrentes ──
+function renderDiasList(){
+  const el = document.getElementById('dias-list');
+  if(!el) return;
+  const dias = state.campoDias||[];
+  if(!dias.length){ el.innerHTML='<p style="font-size:12px;color:var(--muted);font-style:italic">Nenhum dia configurado.</p>'; return; }
+  el.innerHTML = dias.map((d,i)=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#fafaf7;border:1px solid var(--line);border-radius:2px;margin-bottom:4px;font-size:13px">
+      <span style="flex:1"><strong>${DIAS_SEMANA[d.dia]}</strong> — ${esc(d.periodo)} — ${esc(d.hora)}</span>
+      <button class="icon-btn danger" onclick="removeDia(${i})">×</button>
+    </div>`).join('');
+}
+function addDia(){
+  const dia = parseInt(document.getElementById('dia-semana').value);
+  const periodo = document.getElementById('dia-periodo').value;
+  const hora = document.getElementById('dia-hora').value.trim()||'08:15';
+  if(!state.campoDias) state.campoDias=[];
+  state.campoDias.push({dia, periodo, hora});
+  state.campoDias.sort((a,b)=>a.dia-b.dia||(a.hora>b.hora?1:-1));
+  save(); renderDiasList();
+}
+function removeDia(i){ state.campoDias.splice(i,1); save(); renderDiasList(); }
+
+// ── Gera os dias do mês com base nos dias recorrentes ──
+function getCampoDays(month, year){
+  const dias = state.campoDias||[];
+  if(!dias.length) return [];
+  const days = [];
+  const daysInMonth = new Date(year,month,0).getDate();
+  for(let d=1; d<=daysInMonth; d++){
+    const dow = new Date(year,month-1,d).getDay(); // 0=dom,6=sab
+    for(const config of dias){
+      if(config.dia===dow){
+        const key = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}-${config.periodo}`;
+        days.push({day:d, dow, periodo:config.periodo, hora:config.hora, key});
+      }
+    }
+  }
+  return days;
+}
+
+// ── Render principal ──
+function renderCampo(){
+  const container = document.getElementById('campo-container');
+  if(!container) return;
+  const month = parseInt(document.getElementById('campo-month')?.value||new Date().getMonth()+1);
+  const year  = parseInt(document.getElementById('campo-year')?.value||new Date().getFullYear());
+
+  if(!state.campoDias?.length){
+    container.innerHTML=`<div style="text-align:center;padding:48px 24px;max-width:480px;margin:0 auto">
+      <div style="font-size:40px;margin-bottom:12px">🏘</div>
+      <div style="font-family:'Fraunces',serif;font-size:20px;font-weight:500;color:var(--ink);margin-bottom:8px">Configure as saídas de campo</div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:24px;line-height:1.6">
+        Antes de lançar a programação de campo, configure os dias e horários recorrentes
+        e cadastre os locais de pregação da sua congregação.
+      </p>
+      <div style="text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:3px;padding:16px;margin-bottom:20px">
+        <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:10px">Passos para começar</div>
+        <div style="font-size:13px;color:var(--ink2);display:flex;flex-direction:column;gap:8px">
+          <div>① Clique em <strong>⚙ Configurar dias e locais</strong></div>
+          <div>② Adicione os locais: Poloni, Junqueira, Rural, etc.</div>
+          <div>③ Adicione os dias recorrentes: ex. Terça-Tarde-17:45, Sábado-Manhã-08:15</div>
+          <div>④ Selecione o mês e ano acima</div>
+          <div>⑤ A tabela aparecerá com todos os dias daquele mês</div>
+        </div>
+      </div>
+      <button class="btn" onclick="openCampoConfig()" style="padding:10px 24px">⚙ Configurar agora</button>
+    </div>`;
+    return;
+  }
+
+  const days = getCampoDays(month, year);
+  if(!days.length){
+    container.innerHTML=`<div style="text-align:center;padding:40px;color:var(--muted)">
+      <div style="font-size:24px;margin-bottom:8px">📅</div>
+      <strong style="color:var(--ink2)">Nenhuma saída em ${['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][month]} ${year}</strong><br>
+      <span style="font-size:12px">Os dias configurados não ocorrem neste mês, ou o mês está incorreto.</span>
+    </div>`;
+    return;
+  }
+
+
+
+  if(!state.campoDesignacoes) state.campoDesignacoes={};
+  const locais = state.campoLocais||[];
+
+  let h = `<div style="background:var(--surface);border:1px solid var(--line);overflow-x:auto">
+  <table class="t" style="min-width:600px">
+    <thead><tr>
+      <th style="width:50px">Dia</th>
+      <th style="width:120px">Período</th>
+      <th style="width:80px">Horário</th>
+      <th>Dirigente</th>
+      <th style="width:160px">Local</th>
+    </tr></thead>
+    <tbody>`;
+
+  for(const d of days){
+    const des = state.campoDesignacoes[d.key]||{dirigente:null,local:''};
+    const person = des.dirigente ? state.people.find(p=>p.id===des.dirigente) : null;
+    const dowName = DIAS_SEMANA[d.dow];
+    const isWeekend = d.dow===0||d.dow===6;
+    const rowBg = isWeekend?'background:var(--line)':'';
+
+    h += `<tr style="${rowBg}">
+      <td style="font-weight:600;text-align:center">${String(d.day).padStart(2,'0')}</td>
+      <td>${esc(dowName)} ${esc(d.periodo)}</td>
+      <td style="text-align:center">${esc(d.hora)}</td>
+      <td>${renderCampoPicker(d.key,'dirigente',des.dirigente)}</td>
+      <td>
+        <select onchange="setCampoLocal('${d.key}',this.value)"
+          style="width:100%;padding:5px 7px;border:1px solid var(--line);background:var(--surface);font-family:inherit;font-size:12px;border-radius:2px">
+          <option value="">—</option>
+          ${locais.map(l=>`<option value="${esc(l)}" ${des.local===l?'selected':''}>${esc(l)}</option>`).join('')}
+          <option value="__outro__" ${des.local&&!locais.includes(des.local)?'selected':''}>Outro...</option>
+        </select>
+        ${des.local&&!locais.includes(des.local)?`<input type="text" value="${esc(des.local)}" onchange="setCampoLocal('${d.key}',this.value)" style="margin-top:3px;width:100%;padding:4px 7px;border:1px solid var(--line);font-family:inherit;font-size:12px;border-radius:2px">`:''}
+      </td>
+    </tr>`;
+  }
+
+  h += '</tbody></table></div>';
+  container.innerHTML = h;
+}
+
+function renderCampoPicker(key, field, currentId){
+  const id = `cp-${key}-${field}`;
+  const person = currentId ? state.people.find(p=>p.id===currentId) : null;
+  const label = person ? person.name : 'Selecionar...';
+  const cls = person ? '' : 'empty';
+  const badge = person ? `<span class="tag ${ROLES[person.role].cls}" style="margin-right:4px">${ROLES[person.role].short}</span>` : '';
+  return `<div class="picker" id="${id}">
+    <button type="button" class="picker-trigger ${cls}"
+      onclick="toggleCampoPicker('${id}','${key}','${field}')">
+      <span>${badge}${esc(label)}</span>
+    </button>
+    <div class="picker-dropdown"></div>
+  </div>`;
+}
+
+function toggleCampoPicker(id, key, field){
+  const el = document.getElementById(id);
+  const wasOpen = el.classList.contains('open');
+  document.querySelectorAll('.picker.open').forEach(p=>p.classList.remove('open'));
+  if(wasOpen) return;
+  el.classList.add('open');
+  fillCampoPicker(el, key, field);
+}
+
+function fillCampoPicker(pickerEl, key, field){
+  // Qualquer homem batizado
+  const pool = state.people.filter(p=>p.role!=='female')
+    .sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
+  const currentId = state.campoDesignacoes[key]?.[field]||null;
+
+  let h = `<div class="picker-search"><input type="text" placeholder="Buscar..." oninput="filterPicker(this,'${pickerEl.id}')"></div>`;
+  const groups={elder:[],servant:[],publisher:[]};
+  for(const p of pool){ const g=p.role==='elder'?'elder':p.role==='servant'?'servant':'publisher'; groups[g].push(p); }
+  const order=[['elder','Anciãos'],['servant','Servos'],['publisher','Publicadores']];
+  for(const [role,label] of order){
+    if(!groups[role].length) continue;
+    h+=`<div class="picker-group-label">${label}</div>`;
+    for(const p of groups[role]){
+      const sel=p.id===currentId?' selected':'';
+      h+=`<div class="picker-item${sel}" data-name="${esc(p.name.toLowerCase())}"
+        onclick="selectCampo('${key}','${field}','${p.id}')">
+        <span>${esc(p.name)}</span>
+        <span class="tag ${ROLES[p.role].cls}">${ROLES[p.role].short}</span>
+      </div>`;
+    }
+  }
+  if(currentId) h+=`<div class="picker-clear" onclick="selectCampo('${key}','${field}',null)">✕ Limpar</div>`;
+  pickerEl.querySelector('.picker-dropdown').innerHTML = h;
+}
+
+function selectCampo(key, field, id){
+  if(!state.campoDesignacoes) state.campoDesignacoes={};
+  if(!state.campoDesignacoes[key]) state.campoDesignacoes[key]={dirigente:null,local:''};
+  state.campoDesignacoes[key][field]=id;
+  save();
+  document.querySelectorAll('.picker.open').forEach(p=>p.classList.remove('open'));
+  renderCampo();
+}
+
+function setCampoLocal(key, val){
+  if(!state.campoDesignacoes) state.campoDesignacoes={};
+  if(!state.campoDesignacoes[key]) state.campoDesignacoes[key]={dirigente:null,local:''};
+  if(val==='__outro__') return;
+  state.campoDesignacoes[key].local = val;
+  save();
+}
+
+// ── Sugestão automática ──
+function sugerirCampo(){
+  const month=parseInt(document.getElementById('campo-month')?.value||new Date().getMonth()+1);
+  const year=parseInt(document.getElementById('campo-year')?.value||new Date().getFullYear());
+  const days=getCampoDays(month,year);
+  if(!days.length){toast('Configure os dias primeiro',true);return;}
+
+  const pool=state.people.filter(p=>p.role!=='female');
+  if(!pool.length){toast('Nenhum homem cadastrado',true);return;}
+
+  if(!state.campoDesignacoes) state.campoDesignacoes={};
+
+  // Conta designações por pessoa neste mês + histórico
+  const count={};
+  for(const d of days){
+    const id=state.campoDesignacoes[d.key]?.dirigente;
+    if(id) count[id]=(count[id]||0)+1;
+  }
+  // Adiciona peso do histórico
+  for(const p of state.people){
+    const hCount=countCampoHistory(p.id);
+    if(hCount>0) count[p.id]=(count[p.id]||0)+hCount;
+  }
+
+  // Localiza o local padrão (mais usado)
+  const localDefault=state.campoLocais?.[0]||'';
+  let total=0;
+
+  for(const d of days){
+    const des=state.campoDesignacoes[d.key]||{};
+    if(des.dirigente) continue; // já preenchido
+    // Escolhe quem fez menos
+    const sorted=[...pool].sort((a,b)=>(count[a.id]||0)-(count[b.id]||0));
+    const chosen=sorted[0];
+    if(!state.campoDesignacoes[d.key]) state.campoDesignacoes[d.key]={dirigente:null,local:''};
+    state.campoDesignacoes[d.key].dirigente=chosen.id;
+    if(!state.campoDesignacoes[d.key].local) state.campoDesignacoes[d.key].local=localDefault;
+    count[chosen.id]=(count[chosen.id]||0)+1;
+    total++;
+  }
+  save();renderCampo();
+  toast(`✨ ${total} dirigente(s) sugerido(s)`);
+}
+
+// ── Impressão ──
+function printCampo(){
+  const month=parseInt(document.getElementById('campo-month')?.value||new Date().getMonth()+1);
+  const year=parseInt(document.getElementById('campo-year')?.value||new Date().getFullYear());
+  const days=getCampoDays(month,year);
+  if(!days.length){toast('Nenhuma saída configurada',true);return;}
+
+  // Validação: verifica dias sem dirigente
+  const semDirigente=days.filter(d=>!state.campoDesignacoes[d.key]?.dirigente);
+  if(semDirigente.length>0){
+    const lista=semDirigente.map(d=>`Dia ${String(d.day).padStart(2,'0')} — ${DIAS_SEMANA[d.dow]} ${d.periodo}`).join('\n');
+    if(!confirm(`⚠ ${semDirigente.length} saída(s) sem dirigente:\n\n${lista}\n\nDeseja imprimir mesmo assim?`)) return;
+  }
+
+  const MESES=['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+  let rows='';
+  for(const d of days){
+    const des=state.campoDesignacoes[d.key]||{};
+    const pname=des.dirigente?personName(des.dirigente):'—';
+    const local=des.local||'—';
+    const isWeekend=d.dow===0||d.dow===6;
+    const bg=isWeekend?'background:#f0f0f0':'';
+    rows+=`<tr style="${bg}">
+      <td style="text-align:center;font-weight:600">${String(d.day).padStart(2,'0')}</td>
+      <td>${DIAS_SEMANA[d.dow]} ${esc(d.periodo)}</td>
+      <td style="text-align:center">${esc(d.hora)}</td>
+      <td>${esc(pname)}</td>
+      <td>${esc(local)}</td>
+    </tr>`;
+  }
+
+  const printHtml=`<div style="font-family:Arial,sans-serif;padding:15mm">
+    <h2 style="text-align:center;text-transform:uppercase;font-size:14pt;margin-bottom:16pt;letter-spacing:.05em">
+      Lista de Grupo — ${MESES[month]}
+    </h2>
+    <table style="width:100%;border-collapse:collapse;font-size:10pt">
+      <thead>
+        <tr style="border-bottom:2px solid #333">
+          <th style="padding:5pt 7pt;text-align:center;width:40pt">Data</th>
+          <th style="padding:5pt 7pt;text-align:left;width:130pt">Período</th>
+          <th style="padding:5pt 7pt;text-align:center;width:60pt">Horário</th>
+          <th style="padding:5pt 7pt;text-align:left">Dirigente</th>
+          <th style="padding:5pt 7pt;text-align:left;width:100pt">Local</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </div>`;
+
+  const area=document.getElementById('mec-print-area');
+  area.innerHTML=printHtml;
+  area.style.display='block';
+  window.print();
+  setTimeout(()=>{area.style.display='none';area.innerHTML='';},1500);
+}
+
+
+function arquivarCampo(){
+  const month=parseInt(document.getElementById('campo-month')?.value||new Date().getMonth()+1);
+  const year=parseInt(document.getElementById('campo-year')?.value||new Date().getFullYear());
+  const days=getCampoDays(month,year);
+  const MESES=['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  if(!days.length){toast('Nenhuma saída para arquivar',true);return;}
+  if(!confirm(`Arquivar campo de ${MESES[month]}/${year}?\n\nAs designações serão salvas no histórico e limpas para o próximo mês.`)) return;
+
+  if(!state.campoHistorico) state.campoHistorico=[];
+  // Salva snapshot das designações deste mês
+  const snap={};
+  for(const d of days){ if(state.campoDesignacoes[d.key]) snap[d.key]=state.campoDesignacoes[d.key]; }
+
+  state.campoHistorico.unshift({mes:month,ano:year,label:`${MESES[month]} ${year}`,designacoes:snap});
+  state.campoHistorico=state.campoHistorico.slice(0,2); // mantém 2 meses
+
+  // Limpa as designações do mês arquivado
+  for(const d of days) delete state.campoDesignacoes[d.key];
+  save();renderCampo();
+  toast(`✓ Campo de ${MESES[month]}/${year} arquivado`);
+}
+
+// Conta designações de campo no histórico para sugestão
+function countCampoHistory(personId){
+  let n=0;
+  for(const arq of (state.campoHistorico||[])){
+    for(const des of Object.values(arq.designacoes||{})){
+      if(des.dirigente===personId) n++;
+    }
+  }
+  return n;
+}
 /* ════════════════════════════════════════
    MECÂNICAS
 ════════════════════════════════════════ */
@@ -2129,15 +2813,15 @@ function emptyMecanicas(){
   return m;
 }
 
-function eligibleMecanica(){
-  // Homens que podem fazer mecânicas:
-  // - Sem nenhuma habilitação definida = pode tudo (inclusive mecânicas)
-  // - Com habilitação "mecanicas" marcada explicitamente
+function eligibleMecanica(weekIdx=null){
+  // Homens que podem fazer mecânicas, opcionalmente filtrando por semana
   return state.people.filter(p=>{
     if(p.role==='female') return false;
     const abilities = p.restrict||[];
-    if(abilities.length===0) return true; // sem restrições = aparece em tudo
-    return abilities.includes('mecanicas');
+    if(abilities.length>0 && !abilities.includes('mecanicas')) return false;
+    // Verifica indisponibilidade da semana
+    if(weekIdx!==null && (p.unavail||[]).includes(weekIdx)) return false;
+    return true;
   });
 }
 
@@ -2267,7 +2951,6 @@ function countMecMonth(personId){
 
 function sugerirMecanicas(){
   if(!state.mecanicas) state.mecanicas = emptyMecanicas();
-  const pool = eligibleMecanica();
   let total = 0;
 
   for(let n=0; n<5; n++){
@@ -2279,7 +2962,8 @@ function sugerirMecanicas(){
       for(const f of MECANICA_FUNCOES){
         if(state.mecanicas[n]?.[r.key]?.[f.key]) continue; // já preenchido
         // Escolhe quem fez menos no mês e não está nesta sessão
-        const sorted = [...pool].sort((a,b)=>{
+        const weekPool = eligibleMecanica(n);
+        const sorted = [...weekPool].sort((a,b)=>{
           const ca=countMecMonth(a.id), cb=countMecMonth(b.id);
           if(ca!==cb) return ca-cb;
           return Math.random()-.5;
@@ -2297,6 +2981,92 @@ function sugerirMecanicas(){
   }
   save(); renderMecanicas();
   toast(`✨ ${total} designação(ões) de mecânicas sugerida(s)`);
+}
+
+
+function printMecanicas(){
+  const area = document.getElementById('mec-print-area');
+  if(!area) return;
+
+  // Descobre o período das semanas
+  const datas = state.weeks.map(w=>w.DATA||'').filter(Boolean);
+  const periodo = datas.length ? datas[0].split(' de ')[1]||'' : '';
+  const ano = new Date().getFullYear();
+
+  let html2 = `<div class="mec-print-page">
+    <div class="mec-print-title">Designação Mecânica — ${esc(periodo)} ${ano}</div>`;
+
+  for(let n=0; n<5; n++){
+    const w = state.weeks[n];
+    const dataLabel = w.DATA || `Semana ${n+1}`;
+    if(!w.DATA && !state.mecanicas[n]) continue;
+
+    html2 += `<div class="mec-week-block">
+      <div class="mec-week-header">${esc(dataLabel)}</div>`;
+
+    if(w._eventoTipo==='cancel'){
+      html2 += `<div class="mec-evento">— ${esc(w._evento||'Evento especial')} —</div>`;
+    } else {
+      // Funções da reunião (só uma linha — meio de semana e fim de semana juntos)
+      html2 += `<table class="mec-table">
+        <tr>
+          <th>Áudio e Vídeo</th>
+          <th>Microfone volante</th>
+          <th>Palco</th>
+          <th>Indicador</th>
+        </tr>`;
+
+      // Linha meio de semana
+      const mds = state.mecanicas[n]?.mds||{};
+      const fds = state.mecanicas[n]?.fds||{};
+      const pn2 = id => personName(id)||'—';
+
+      html2 += `<tr>
+        <td>${pn2(mds.audio||fds.audio)}</td>
+        <td>${pn2(mds.microfone||fds.microfone)}</td>
+        <td>${pn2(mds.palco||fds.palco)}</td>
+        <td>${pn2(mds.indicador||fds.indicador)}</td>
+      </tr>`;
+
+      // Se MDS e FDS são diferentes, mostra as duas linhas
+      const mdsStr = [mds.audio,mds.microfone,mds.palco,mds.indicador].join();
+      const fdsStr = [fds.audio,fds.microfone,fds.palco,fds.indicador].join();
+      if(mdsStr !== fdsStr && fdsStr.replace(/,/g,'')){
+        html2 += `<tr style="background:#f0f0f0">
+          <td style="font-size:8pt;color:#888" colspan="4">Fim de semana:</td>
+        </tr>
+        <tr>
+          <td>${pn2(fds.audio)}</td>
+          <td>${pn2(fds.microfone)}</td>
+          <td>${pn2(fds.palco)}</td>
+          <td>${pn2(fds.indicador)}</td>
+        </tr>`;
+      }
+
+      html2 += `</table>`;
+
+      // Limpeza
+      const grupoIdx = state.limpeza?.[n]?.grupo;
+      const grupo = grupoIdx!=null ? state.grupos[grupoIdx] : null;
+      if(grupo){
+        const membros = grupo.membros?.length ? grupo.membros.join(', ') : '—';
+        html2 += `<table class="mec-table" style="margin-top:2pt">
+          <tr>
+            <td class="mec-limpeza-label" style="width:80pt">Limpeza</td>
+            <td class="mec-limpeza-val">(${esc(grupo.nome)}) ${esc(membros)}</td>
+          </tr>
+        </table>`;
+      }
+    }
+
+    html2 += `</div>`;
+  }
+
+  html2 += `</div>`;
+  area.innerHTML = html2;
+  area.style.display = 'block';
+  window.print();
+  setTimeout(()=>{ area.style.display='none'; area.innerHTML=''; }, 1500);
 }
 
 /* ════════════════════════════════════════
@@ -2643,7 +3413,19 @@ function renderEscala(){
   html += `</tbody></table></div>
   <p style="font-size:12px;color:var(--muted);margin-top:12px">
     Verde = 1 parte · Laranja = 2+ partes na semana · Total em vermelho = 7+ designações no mês
-  </p>`;
+  </p>
+
+  ${(state.historico||[]).length ? `
+  <div style="margin-top:20px">
+    <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:8px">
+      Histórico arquivado (últimos 2 meses)
+    </div>
+    ${(state.historico||[]).map(arq=>`
+      <div style="font-size:12px;color:var(--ink2);padding:6px 10px;background:var(--surface);border:1px solid var(--line);border-radius:2px;margin-bottom:4px">
+        📦 <strong>${esc(arq.label)}</strong>
+        <span style="color:var(--muted);margin-left:6px">arquivado em ${arq.arquivadoEm||'?'}</span>
+      </div>`).join('')}
+  </div>` : ''}`;
 
   container.innerHTML = html;
 }
@@ -2836,7 +3618,7 @@ const ASSIGN_ORDER = [
 
 function sugerirDesignacoes(){
   // Constrói histórico do mês COM as designações já feitas
-  const monthHist = buildMonthHistory();
+  const monthHist = buildMonthHistoryExtended(); // inclui histórico dos últimos 2 meses
   // currentAssignments: o que foi designado NESTA rodada (por semana)
   const currentAssignments = {};
 
@@ -2907,6 +3689,246 @@ function sugerirDesignacoes(){
 }
 
 
+
+
+/* ════════════════════════════════════════
+   HISTÓRICO ACUMULADO
+════════════════════════════════════════ */
+
+function arquivarMes(){
+  // Verifica se há algum dado preenchido
+  const hasData = state.weeks.some(w=>w.DATA||w.PRESIDENTE);
+  if(!hasData){ toast('Nenhuma programação para arquivar',true); return; }
+
+  const label = state.weeks.find(w=>w.DATA)?.DATA || 'Mês atual';
+  if(!confirm(`Arquivar a programação atual como histórico?\n\n"${label}"\n\nIsso salva o mês atual no histórico (últimos 2 meses) e limpa a programação para o próximo mês.`)) return;
+
+  if(!state.historico) state.historico=[];
+
+  // Salva o mês atual no histórico
+  state.historico.unshift({
+    label,
+    arquivadoEm: new Date().toISOString().slice(0,10),
+    weeks: JSON.parse(JSON.stringify(state.weeks)), // cópia profunda
+  });
+
+  // Mantém só os últimos 2 meses
+  state.historico = state.historico.slice(0,2);
+
+  // Limpa a programação atual (mantém pessoas e configs)
+  state.weeks = [emptyWeek(),emptyWeek(),emptyWeek(),emptyWeek(),emptyWeek()];
+  save();
+  renderSchedule();
+  toast(`✓ Mês arquivado`);
+
+  // Sugere importar o próximo mês
+  const now = new Date();
+  const nextMonth = now.getMonth()+2 > 12 ? 1 : now.getMonth()+2;
+  const nextYear  = now.getMonth()+2 > 12 ? now.getFullYear()+1 : now.getFullYear();
+  const MESES = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  setTimeout(()=>{
+    if(confirm(`Mês arquivado com sucesso! ✓
+
+Deseja importar a apostila de ${MESES[nextMonth]}/${nextYear} agora?`)){
+      openImportModal();
+      document.getElementById('im-month').value = nextMonth;
+      document.getElementById('im-year').value  = nextYear;
+    }
+  }, 400);
+}
+
+// Retorna histórico consolidado para sugestão automática
+// Inclui semanas atuais + histórico dos últimos 2 meses
+function buildMonthHistoryExtended(){
+  const hist = buildMonthHistory(); // mês atual
+
+  // Adiciona do histórico arquivado
+  for(const arq of (state.historico||[])){
+    for(let n=0; n<(arq.weeks?.length||0); n++){
+      const w = arq.weeks[n];
+      for(const part of PARTS){
+        if(part.type==='person' && w[part.tag]){
+          const id = w[part.tag];
+          if(!hist[id]) hist[id]=[];
+          hist[id].push({weekIdx:n, tag:part.tag, section:part.section, archived:true});
+        }
+        if(part.type==='pair'){
+          for(const key of ['a','b']){
+            const id = w[part.tag]?.[key];
+            if(id){
+              if(!hist[id]) hist[id]=[];
+              hist[id].push({weekIdx:n, tag:part.tag, section:part.section, archived:true});
+            }
+          }
+        }
+      }
+    }
+  }
+  return hist;
+}
+
+
+
+/* ════════════════════════════════════════
+   BUSCA GLOBAL
+════════════════════════════════════════ */
+function openBusca(){
+  document.getElementById('busca-bg').classList.add('open');
+  document.getElementById('busca-input').value='';
+  document.getElementById('busca-results').innerHTML='<p style="color:var(--muted);font-size:13px">Digite um nome para ver todas as designações do mês.</p>';
+  setTimeout(()=>document.getElementById('busca-input').focus(),100);
+}
+function closeBusca(){ document.getElementById('busca-bg').classList.remove('open'); }
+
+function renderBusca(){
+  const q = document.getElementById('busca-input').value.toLowerCase().trim();
+  const el = document.getElementById('busca-results');
+  if(!q){ el.innerHTML='<p style="color:var(--muted);font-size:13px">Digite um nome.</p>'; return; }
+
+  const matches = state.people.filter(p=>p.name.toLowerCase().includes(q));
+  if(!matches.length){ el.innerHTML='<p style="color:var(--muted);font-size:13px">Nenhuma pessoa encontrada.</p>'; return; }
+
+  let html2='';
+  for(const person of matches){
+    const designacoes=[];
+    for(let n=0;n<5;n++){
+      const w=state.weeks[n];
+      const weekLabel=w.DATA||`Semana ${n+1}`;
+      for(const part of PARTS){
+        if(part.type==='person'&&w[part.tag]===person.id)
+          designacoes.push({semana:weekLabel,parte:part.label,section:part.section});
+        if(part.type==='pair'){
+          if(w[part.tag]?.a===person.id) designacoes.push({semana:weekLabel,parte:part.label+' (Est.)',section:part.section});
+          if(w[part.tag]?.b===person.id) designacoes.push({semana:weekLabel,parte:part.label+' (Aj.)',section:part.section});
+        }
+      }
+      // Mecânicas
+      for(const r of [{key:'mds',label:'MdS'},{key:'fds',label:'FdS'}]){
+        for(const f of MECANICA_FUNCOES){
+          if(state.mecanicas[n]?.[r.key]?.[f.key]===person.id)
+            designacoes.push({semana:weekLabel,parte:`${f.label} (${r.label})`,section:'Mecânicas'});
+        }
+      }
+    }
+
+    html2+=`<div style="margin-bottom:14px;padding:12px;background:var(--surface);border:1px solid var(--line);border-radius:2px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <strong style="font-size:14px">${esc(person.name)}</strong>
+        <span class="tag ${ROLES[person.role].cls}">${ROLES[person.role].label}</span>
+        <span style="margin-left:auto;font-size:12px;color:var(--muted)">${designacoes.length} designação(ões)</span>
+      </div>`;
+    if(!designacoes.length){
+      html2+=`<p style="font-size:12px;color:var(--muted);font-style:italic">Sem designações este mês.</p>`;
+    } else {
+      html2+=`<div style="display:flex;flex-direction:column;gap:4px">`;
+      for(const d of designacoes){
+        html2+=`<div style="display:flex;gap:8px;font-size:12px;align-items:center">
+          <span style="color:var(--muted);min-width:140px">${esc(d.semana)}</span>
+          <span style="color:var(--accent);font-size:10px;min-width:80px">${esc(d.section)}</span>
+          <span>${esc(d.parte)}</span>
+        </div>`;
+      }
+      html2+=`</div>`;
+    }
+    html2+=`</div>`;
+  }
+  el.innerHTML=html2;
+}
+
+function openGuia(){ document.getElementById('guia-bg').classList.add('open'); }
+function closeGuia(){ document.getElementById('guia-bg').classList.remove('open'); }
+
+/* ════════════════════════════════════════
+   TELA DE BOAS-VINDAS
+════════════════════════════════════════ */
+function checkFirstAccess(){
+  // Mostra boas-vindas se não há dados (sem pessoas e sem congregação configurada)
+  const isNew = !state.congregacao && !state.people.length;
+  if(isNew){
+    const ws = document.getElementById('welcome-screen');
+    if(ws) ws.style.display='flex';
+  }
+}
+
+function closeWelcome(){
+  const ws = document.getElementById('welcome-screen');
+  if(ws) ws.style.display='none';
+}
+
+function welcomeNova(){
+  closeWelcome();
+  // Vai para configurações para definir o nome da congregação
+  switchView('settings');
+  setTimeout(()=>{
+    document.getElementById('cfg-cong')?.focus();
+    toast('Configure o nome da congregação e depois cadastre as pessoas na aba Pessoas');
+  },300);
+}
+
+function welcomeImport(ev){
+  const f = ev.target.files[0];
+  if(!f) return;
+  const r = new FileReader();
+  r.onload = e => {
+    try{
+      const d = JSON.parse(e.target.result);
+      if(!d.people||!d.weeks) throw new Error('Formato inválido');
+      state = d;
+      save();
+      closeWelcome();
+      renderSchedule();
+      renderPeople();
+      updateHeaderCong();
+      toast(`✓ Dados importados — ${d.people.length} pessoa(s), ${d.congregacao||'congregação não definida'}`);
+    }catch(err){
+      toast('Erro ao importar: '+err.message, true);
+    }
+  };
+  r.readAsText(f);
+  ev.target.value='';
+}
+
+function welcomeImportTxt(ev){
+  closeWelcome();
+  // Reutiliza a lógica existente de importar TXT
+  importPeopleTxt(ev);
+  // Após importar, vai para Pessoas
+  setTimeout(()=>switchView('people'), 500);
+}
+
+
+function toggleExportMenu(){
+  const m=document.getElementById('export-menu');
+  m.style.display=m.style.display==='none'?'block':'none';
+  document.addEventListener('click',function h(e){
+    if(!document.getElementById('export-menu-wrap')?.contains(e.target)){
+      closeExportMenu();document.removeEventListener('click',h);
+    }
+  });
+}
+function closeExportMenu(){ document.getElementById('export-menu').style.display='none'; }
+
+function exportModulo(modulo){
+  let data={}, fname='';
+  const ts=new Date().toISOString().slice(0,10);
+  const cong=(state.congregacao||'cronos').replace(/\s+/g,'-').toLowerCase();
+  switch(modulo){
+    case 'pessoas':
+      data={pessoas:state.people}; fname=`${cong}-pessoas-${ts}.json`; break;
+    case 'programacao':
+      data={congregacao:state.congregacao,weeks:state.weeks,historico:state.historico,events:state.events,startTime:state.startTime};
+      fname=`${cong}-programacao-${ts}.json`; break;
+    case 'mecanicas':
+      data={mecanicas:state.mecanicas,grupos:state.grupos,limpeza:state.limpeza};
+      fname=`${cong}-mecanicas-${ts}.json`; break;
+    case 'campo':
+      data={campoLocais:state.campoLocais,campoDias:state.campoDias,campoDesignacoes:state.campoDesignacoes,campoHistorico:state.campoHistorico};
+      fname=`${cong}-campo-${ts}.json`; break;
+  }
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;a.click();
+  toast(`✓ Exportado: ${fname}`);
+}
 /* ════════════════════════════════════════
    GOOGLE LOGIN
 ════════════════════════════════════════ */
@@ -2959,14 +3981,34 @@ window.triggerGoogleLogin = function(){
   }
 };
 
-// Mostra botão fallback se GSI não renderizar em 3s
-setTimeout(()=>{
-  const gsiFrame=document.querySelector('.g_id_signin iframe');
-  if(!gsiFrame){
-    const fb=document.getElementById('google-fallback-btn');
-    if(fb) fb.style.display='flex';
+// Inicializa o login Google programaticamente (mais confiável que declarativo)
+function initGoogleLogin(){
+  if(!window.google?.accounts?.id) return;
+  google.accounts.id.initialize({
+    client_id: GOOGLE_CLIENT_ID,
+    callback: window.onGoogleLogin,
+    auto_select: false,
+    cancel_on_tap_outside: false,
+  });
+  // Renderiza o botão no container
+  const container = document.getElementById('google-btn-container');
+  if(container){
+    google.accounts.id.renderButton(container, {
+      type: 'standard',
+      size: 'large',
+      theme: 'outline',
+      text: 'sign_in_with',
+      shape: 'rectangular',
+      logo_alignment: 'left',
+      width: 300,
+    });
   }
-}, 3000);
+  // One Tap (popup automático)
+  google.accounts.id.prompt((notification)=>{
+    // Silencioso — não exibe erro se o one-tap for bloqueado
+    console.log('[GSI] prompt status:', notification.getMomentType?.());
+  });
+}
 
 /* ════════════════════════════════════════
    INIT
@@ -3002,7 +4044,7 @@ function checkPassword(){
 }
 
 document.addEventListener('DOMContentLoaded',()=>{
-  applyTheme();
+  applyTheme(); // aplica antes de qualquer render para evitar flash
   // Verifica se já autenticou nesta sessão
   if(sessionStorage.getItem('s140-auth')=='1'){
     document.getElementById('lock-screen').style.display='none';
@@ -3015,6 +4057,29 @@ document.addEventListener('DOMContentLoaded',()=>{
   // Se Google já autenticou via auto_select, onGoogleLogin é chamado automaticamente
   renderSchedule();
   updateHeaderCong();
+  checkFirstAccess();
+
+  // Atalho Ctrl+Z para desfazer
+  document.addEventListener('keydown', e=>{
+    if((e.ctrlKey||e.metaKey) && e.key==='z' && !e.shiftKey){
+      e.preventDefault(); undo();
+    }
+  });
+
+  // Aviso ao fechar/recarregar com alterações não salvas
+  let _lastSaved = JSON.stringify(state);
+  const _origSave = save;
+  window.addEventListener('beforeunload', e => {
+    if(JSON.stringify(state) !== _lastSaved){
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  });
+  // Atualiza _lastSaved após cada save
+  window.save = function(){
+    _origSave();
+    _lastSaved = JSON.stringify(state);
+  };
 });
 </script>
 </body>
