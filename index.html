@@ -4462,8 +4462,14 @@ async function createFirstCongregacao(user){
     criadoEm: new Date().toISOString(),
   });
   currentCongId = congId;
-  localStorage.setItem('cronos-congId', congId); // salva para próxima sessão
+  localStorage.setItem('cronos-congId', congId);
   isAdminUser = true;
+  // Salva mapeamento uid → congId para acesso futuro
+  try {
+    await setDoc(doc(fbDb, `usuarios/${user.uid}`), {
+      congId, isAdmin:true, email:user.email, updatedAt:new Date().toISOString()
+    });
+  } catch(e){ console.warn('[Cronos] Erro ao salvar userDoc:', e); }
   await loadStateFromFirestore();
   onUserLoaded();
   toast('Congregação criada! Configure o nome em Configurações.');
