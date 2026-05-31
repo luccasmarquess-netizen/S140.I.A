@@ -4327,6 +4327,23 @@ async function saveToFirestore(){
   }
 }
 
+
+function updateUserInfo(user){
+  if(!user) return;
+  const btn = document.getElementById('theme-btn');
+  if(!btn) return;
+  let avatar = document.getElementById('user-avatar');
+  if(!avatar){
+    avatar = document.createElement('img');
+    avatar.id = 'user-avatar';
+    avatar.style.cssText = 'width:28px;height:28px;border-radius:50%;cursor:pointer;border:2px solid rgba(255,255,255,0.3)';
+    avatar.onclick = signOutUser;
+    btn.parentNode.insertBefore(avatar, btn);
+  }
+  avatar.title = (user.name||'') + ' (clique para sair)';
+  if(user.pic) avatar.src = user.pic;
+}
+
 function onUserLoaded(){
   // Atualiza UI
   updateHeaderCong();
