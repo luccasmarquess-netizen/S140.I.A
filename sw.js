@@ -1,7 +1,5 @@
-// Cronos — Service Worker
-// Gerencia cache offline e notificações push
-
-const CACHE_NAME = 'cronos-v1';
+// Cronos — Service Worker v2
+const CACHE_NAME = 'cronos-v2';
 const STATIC_ASSETS = [
   '/S140.I.A/',
   '/S140.I.A/index.html',
@@ -10,7 +8,6 @@ const STATIC_ASSETS = [
   '/S140.I.A/icon-512.png',
 ];
 
-// Instala e faz cache dos assets estáticos
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE_NAME).then(cache => cache.addAll(STATIC_ASSETS))
@@ -18,7 +15,6 @@ self.addEventListener('install', e => {
   self.skipWaiting();
 });
 
-// Limpa caches antigos
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
@@ -28,9 +24,8 @@ self.addEventListener('activate', e => {
   self.clients.claim();
 });
 
-// Estratégia: network first, fallback para cache
+// Network first — sempre busca a versão mais recente
 self.addEventListener('fetch', e => {
-  // Ignora requisições do Firebase e APIs externas
   if (e.request.url.includes('firestore') ||
       e.request.url.includes('googleapis') ||
       e.request.url.includes('gstatic') ||
@@ -39,10 +34,17 @@ self.addEventListener('fetch', e => {
     return;
   }
 
+  // Para HTML: sempre busca da rede (nunca cache)
+  if (e.request.destination === 'document') {
+    e.respondWith(
+      fetch(e.request).catch(() => caches.match(e.request))
+    );
+    return;
+  }
+
   e.respondWith(
     fetch(e.request)
       .then(res => {
-        // Atualiza cache com resposta nova
         if (res.ok && e.request.method === 'GET') {
           const clone = res.clone();
           caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
@@ -53,7 +55,6 @@ self.addEventListener('fetch', e => {
   );
 });
 
-// Notificações push (para uso futuro com FCM)
 self.addEventListener('push', e => {
   if (!e.data) return;
   const data = e.data.json();
@@ -62,7 +63,6 @@ self.addEventListener('push', e => {
       body: data.body || '',
       icon: '/S140.I.A/icon-192.png',
       badge: '/S140.I.A/icon-192.png',
-      data: data,
     })
   );
 });
