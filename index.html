@@ -694,6 +694,32 @@ table.t tr:hover td{background:#fafaf7}
 </div>
 </div>
 
+<!-- Modal Convite -->
+<div class="modal-bg" id="convite-bg" onclick="if(event.target===this)closeConvite()">
+<div class="modal" style="max-width:480px;text-align:center">
+  <h2 style="margin-bottom:8px">Link de convite</h2>
+  <div id="convite-pessoa" style="font-size:13px;color:var(--muted);margin-bottom:20px"></div>
+
+  <div id="convite-loading" style="padding:24px;color:var(--muted)">⏳ Gerando link...</div>
+
+  <div id="convite-result" style="display:none">
+    <div style="background:var(--line);border-radius:8px;padding:12px 16px;margin-bottom:16px;word-break:break-all;font-size:12px;font-family:monospace;text-align:left" id="convite-url"></div>
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+      <button class="btn" onclick="copiarConvite()">📋 Copiar link</button>
+      <button class="btn ghost" onclick="compartilharConvite()">📤 Compartilhar</button>
+      <button class="btn ghost" onclick="whatsappConvite()">💬 WhatsApp</button>
+    </div>
+    <p style="font-size:12px;color:var(--muted);margin-top:14px">
+      ⏱ Válido por 7 dias · Uso único · O publicador faz login com Google e é reconhecido automaticamente
+    </p>
+  </div>
+
+  <div id="convite-error" style="display:none;color:var(--err);font-size:13px;padding:12px"></div>
+
+  <button class="btn ghost" onclick="closeConvite()" style="margin-top:16px">Fechar</button>
+</div>
+</div>
+
 <!-- Modal Guia de Uso -->
 <div class="modal-bg" id="guia-bg" onclick="if(event.target===this)closeGuia()">
 <div class="modal" style="max-width:620px;max-height:85vh;overflow-y:auto">
@@ -4162,7 +4188,14 @@ async function initFirebaseAuth(){
     if(user){
       currentUser = user;
       document.getElementById('lock-screen').style.display='none';
-      await loadUserCongregacao(user);
+      // Verifica convite pendente antes de carregar congregação
+      const conviteProcessado = await processarConvite(user);
+      if(conviteProcessado){
+        await loadStateFromFirestore();
+        onUserLoaded();
+      } else {
+        await loadUserCongregacao(user);
+      }
     } else {
       currentUser = null;
       renderFirebaseLoginScreen();
@@ -4643,6 +4676,152 @@ function renderPublicadorDesignacoes(){
 }
 
 
+
+/* ════════════════════════════════════════
+   SISTEMA DE CONVITES
+════════════════════════════════════════ */
+let _conviteUrl = '';
+
+function openConvite(){ document.getElementById('convite-bg').classList.add('open'); }
+function closeConvite(){ document.getElementById('convite-bg').classList.remove('open'); }
+
+async function gerarConvite(pessoaId){
+  if(!currentCongId || !window._fb){
+    toast('Firestore não disponível',true); return;
+  }
+  const pessoa = state.people.find(p=>p.id===pessoaId);
+  if(!pessoa){ toast('Pessoa não encontrada',true); return; }
+
+  // Mostra modal
+  document.getElementById('convite-pessoa').textContent = `Convite para: ${pessoa.name}`;
+  document.getElementById('convite-loading').style.display='block';
+  document.getElementById('convite-result').style.display='none';
+  document.getElementById('convite-error').style.display='none';
+  openConvite();
+
+  try {
+    const {fbDb, doc, setDoc} = window._fb;
+    // Gera token único
+    const token = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    const expira = new Date(Date.now() + 7*24*60*60*1000).toISOString();
+
+    // Salva convite no Firestore
+    await setDoc(doc(fbDb, `congregacoes/${currentCongId}/convites/${token}`), {
+      pessoaId,
+      nome: pessoa.name,
+      congId: currentCongId,
+      usado: false,
+      criadoEm: new Date().toISOString(),
+      expiraEm: expira,
+    });
+
+    // Monta URL
+    const base = window.location.origin + window.location.pathname;
+    _conviteUrl = `${base}?convite=${token}`;
+    document.getElementById('convite-url').textContent = _conviteUrl;
+    document.getElementById('convite-loading').style.display='none';
+    document.getElementById('convite-result').style.display='block';
+
+  } catch(e){
+    console.error(e);
+    document.getElementById('convite-loading').style.display='none';
+    document.getElementById('convite-error').style.display='block';
+    document.getElementById('convite-error').textContent='⚠ Erro: '+e.message;
+  }
+}
+
+function copiarConvite(){
+  navigator.clipboard.writeText(_conviteUrl)
+    .then(()=>toast('Link copiado!'))
+    .catch(()=>{
+      // Fallback para mobile
+      const el = document.createElement('textarea');
+      el.value = _conviteUrl;
+      document.body.appendChild(el);
+      el.select(); document.execCommand('copy');
+      document.body.removeChild(el);
+      toast('Link copiado!');
+    });
+}
+
+function compartilharConvite(){
+  if(navigator.share){
+    navigator.share({
+      title: 'Cronos — Convite',
+      text: `Você foi convidado para acessar o Cronos (${state.congregacao||'Congregação'}). Clique no link para aceitar:`,
+      url: _conviteUrl,
+    }).catch(()=>{});
+  } else {
+    copiarConvite();
+  }
+}
+
+function whatsappConvite(){
+  const texto = encodeURIComponent(
+    `Olá! Você foi convidado para acessar o *Cronos* — Programador de Reunião da ${state.congregacao||'Congregação'}.\n\nClique no link para ver suas designações:\n${_conviteUrl}`
+  );
+  window.open(`https://wa.me/?text=${texto}`, '_blank');
+}
+
+// Verifica se há um convite na URL ao carregar
+async function verificarConviteURL(){
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get('convite');
+  if(!token) return false;
+
+  console.log('[Cronos] Convite detectado:', token);
+  sessionStorage.setItem('pendingConvite', token);
+  // Limpa URL
+  window.history.replaceState({}, '', window.location.pathname);
+  return true;
+}
+
+// Processa convite pendente após login
+async function processarConvite(user){
+  const token = sessionStorage.getItem('pendingConvite');
+  if(!token || !window._fb) return false;
+
+  const {fbDb, doc, getDoc, setDoc, collection, getDocs} = window._fb;
+
+  try {
+    // Busca o convite em todas as congregações
+    const congsSnap = await getDocs(collection(fbDb, 'congregacoes'));
+    for(const congDoc of congsSnap.docs){
+      const conviteRef = doc(fbDb, `congregacoes/${congDoc.id}/convites/${token}`);
+      const conviteDoc = await getDoc(conviteRef);
+      if(!conviteDoc.exists()) continue;
+
+      const convite = conviteDoc.data();
+
+      // Verifica validade
+      if(convite.usado){ toast('Este convite já foi utilizado.',true); return false; }
+      if(new Date(convite.expiraEm) < new Date()){ toast('Este convite expirou.',true); return false; }
+
+      // Associa email à pessoa
+      const pessoaRef = doc(fbDb, `congregacoes/${congDoc.id}/pessoas/${convite.pessoaId}`);
+      await setDoc(pessoaRef, {email: user.email}, {merge:true});
+
+      // Marca convite como usado
+      await setDoc(conviteRef, {usado:true, usadoPor:user.email, usadoEm:new Date().toISOString()}, {merge:true});
+
+      // Define congregação
+      currentCongId = congDoc.id;
+      isAdminUser = false;
+      sessionStorage.removeItem('pendingConvite');
+
+      console.log('[Cronos] Convite aceito! Email associado a:', convite.nome);
+      toast(`✓ Bem-vindo(a), ${convite.nome}! Sua conta foi vinculada.`);
+      return true;
+    }
+
+    toast('Convite não encontrado.',true);
+    return false;
+  } catch(e){
+    console.error('[Cronos] Erro ao processar convite:', e);
+    return false;
+  }
+}
+
 /* ════════════════════════════════════════
    PAINEL DE ADMINISTRAÇÃO
 ════════════════════════════════════════ */
@@ -4770,6 +4949,9 @@ function checkPassword(){
 
 document.addEventListener('DOMContentLoaded',()=>{
   applyTheme();
+
+  // Verifica convite na URL antes de qualquer coisa
+  verificarConviteURL();
 
   // Registra Service Worker (PWA)
   if('serviceWorker' in navigator){
