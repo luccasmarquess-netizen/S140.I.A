@@ -4115,53 +4115,85 @@ async function signOutUser(){
 // Carrega a congregação do usuário
 async function loadUserCongregacao(user){
   const {fbDb, doc, getDoc, collection, getDocs} = window._fb;
+  console.log('[Cronos] Carregando congregação para:', user.email);
 
-  // Busca em qual congregação este email está cadastrado
-  // Estratégia: busca em todas as congregações pelo email
-  const congsRef = collection(fbDb, 'congregacoes');
-  const congsSnap = await getDocs(congsRef);
+  try {
+    // Busca congregações existentes
+    const congsRef = collection(fbDb, 'congregacoes');
+    const congsSnap = await getDocs(congsRef);
+    console.log('[Cronos] Congregações encontradas:', congsSnap.size);
 
-  let foundCong = null;
-  let foundIsAdmin = false;
-
-  for(const congDoc of congsSnap.docs){
-    const config = congDoc.data().config || {};
-    // Verifica se é admin
-    if((config.admins||[]).includes(user.email)){
-      foundCong = congDoc.id;
-      foundIsAdmin = true;
-      break;
-    }
-    // Verifica se é membro (pessoa cadastrada)
-    const pessoasRef = collection(fbDb, 'congregacoes', congDoc.id, 'pessoas');
-    const pessoasSnap = await getDocs(pessoasRef);
-    for(const pDoc of pessoasSnap.docs){
-      if(pDoc.data().email === user.email){
-        foundCong = congDoc.id;
-        foundIsAdmin = false;
-        break;
-      }
-    }
-    if(foundCong) break;
-  }
-
-  if(!foundCong){
-    // Usuário novo — primeiro admin cria a congregação
+    // Banco vazio — cria primeira congregação
     if(congsSnap.empty){
+      console.log('[Cronos] Banco vazio — criando primeira congregação');
       await createFirstCongregacao(user);
-    } else {
-      // Usuário não encontrado em nenhuma congregação
-      document.getElementById('lock-error').style.display='block';
-      document.getElementById('lock-error').textContent='⚠ Sua conta não está cadastrada em nenhuma congregação. Entre em contato com o administrador.';
-      const {fbAuth, signOut} = window._fb;
-      await signOut(fbAuth);
-      document.getElementById('lock-screen').style.display='flex';
       return;
     }
-  } else {
+
+    let foundCong = null;
+    let foundIsAdmin = false;
+
+    for(const congDoc of congsSnap.docs){
+      // Busca config da congregação
+      const configRef = doc(fbDb, 'congregacoes', congDoc.id, 'config', 'config');
+      const configDoc = await getDoc(configRef);
+      const config = configDoc.exists() ? configDoc.data() : {};
+      console.log('[Cronos] Verificando cong:', congDoc.id, 'admins:', config.admins);
+
+      // Verifica se é admin
+      if((config.admins||[]).includes(user.email)){
+        foundCong = congDoc.id;
+        foundIsAdmin = true;
+        break;
+      }
+
+      // Verifica se é membro
+      const pessoasRef = collection(fbDb, 'congregacoes', congDoc.id, 'pessoas');
+      const pessoasSnap = await getDocs(pessoasRef);
+      for(const pDoc of pessoasSnap.docs){
+        if(pDoc.data().email === user.email){
+          foundCong = congDoc.id;
+          foundIsAdmin = false;
+          break;
+        }
+      }
+      if(foundCong) break;
+    }
+
+    if(!foundCong){
+      // Email não encontrado — verifica se há só uma congregação (facilita onboarding)
+      if(congsSnap.size === 1){
+        // Primeira congregação existente — assume que é admin se não houver outros
+        const firstCong = congsSnap.docs[0];
+        const configRef = doc(fbDb, 'congregacoes', firstCong.id, 'config', 'config');
+        const configDoc = await getDoc(configRef);
+        const config = configDoc.exists() ? configDoc.data() : {};
+        if(!(config.admins?.length)){
+          // Sem admins definidos — torna este usuário admin
+          await setDoc(configRef, {admins: [user.email]}, {merge:true});
+          foundCong = firstCong.id;
+          foundIsAdmin = true;
+        }
+      }
+      if(!foundCong){
+        const err = document.getElementById('lock-error');
+        if(err){ err.style.display='block'; err.textContent='⚠ Conta não cadastrada em nenhuma congregação. Entre em contato com o administrador.'; }
+        const {fbAuth, signOut} = window._fb;
+        await signOut(fbAuth);
+        document.getElementById('lock-screen').style.display='flex';
+        return;
+      }
+    }
+
     currentCongId = foundCong;
     isAdminUser = foundIsAdmin;
+    console.log('[Cronos] Congregação:', currentCongId, 'Admin:', isAdminUser);
     await loadStateFromFirestore();
+    onUserLoaded();
+
+  } catch(e){
+    console.error('[Cronos] Erro ao carregar congregação:', e);
+    // Fallback: usa localStorage
     onUserLoaded();
   }
 }
