@@ -304,11 +304,11 @@ table.t tr:hover td{background:#fafaf7}
     <div style="position:relative;display:inline-block" id="export-menu-wrap">
       <button onclick="toggleExportMenu()" title="Opções de exportação">💾 Backup ▾</button>
       <div id="export-menu" style="display:none;position:absolute;top:100%;left:0;background:var(--surface);border:1px solid var(--line);border-radius:3px;min-width:200px;z-index:100;box-shadow:0 4px 16px rgba(0,0,0,.12)">
-        <div onclick="exportData();closeExportMenu()" style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--line)" onmouseover="this.style.background='var(--line)'" onmouseout="this.style.background=''">Tudo (backup completo)</div>
-        <div onclick="exportModulo('pessoas');closeExportMenu()" style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--line)" onmouseover="this.style.background='var(--line)'" onmouseout="this.style.background=''">So pessoas</div>
-        <div onclick="exportModulo('programacao');closeExportMenu()" style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--line)" onmouseover="this.style.background='var(--line)'" onmouseout="this.style.background=''">So programacao</div>
-        <div onclick="exportModulo('mecanicas');closeExportMenu()" style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--line)" onmouseover="this.style.background='var(--line)'" onmouseout="this.style.background=''">So mecanicas</div>
-        <div onclick="exportModulo('campo');closeExportMenu()" style="padding:10px 14px;cursor:pointer;font-size:13px" onmouseover="this.style.background='var(--line)'" onmouseout="this.style.background=''">So campo</div>
+        <div onclick="exportData();closeExportMenu()" style="padding:10px 14px;cursor:pointer;font-size:13px;color:var(--ink);border-bottom:1px solid var(--line)" onmouseover="this.style.background='var(--line)'" onmouseout="this.style.background=''">Tudo (backup completo)</div>
+        <div onclick="exportModulo('pessoas');closeExportMenu()" style="padding:10px 14px;cursor:pointer;font-size:13px;color:var(--ink);border-bottom:1px solid var(--line)" onmouseover="this.style.background='var(--line)'" onmouseout="this.style.background=''">So pessoas</div>
+        <div onclick="exportModulo('programacao');closeExportMenu()" style="padding:10px 14px;cursor:pointer;font-size:13px;color:var(--ink);border-bottom:1px solid var(--line)" onmouseover="this.style.background='var(--line)'" onmouseout="this.style.background=''">So programacao</div>
+        <div onclick="exportModulo('mecanicas');closeExportMenu()" style="padding:10px 14px;cursor:pointer;font-size:13px;color:var(--ink);border-bottom:1px solid var(--line)" onmouseover="this.style.background='var(--line)'" onmouseout="this.style.background=''">So mecanicas</div>
+        <div onclick="exportModulo('campo');closeExportMenu()" style="padding:10px 14px;cursor:pointer;font-size:13px;color:var(--ink)" onmouseover="this.style.background='var(--line)'" onmouseout="this.style.background=''">So campo</div>
       </div>
     </div>
     <button onclick="document.getElementById('imp-file').click()" title="Restaura dados de um backup .json">📂 Restaurar</button>
