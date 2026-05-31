@@ -3945,7 +3945,9 @@ function closeGuia(){ document.getElementById('guia-bg').classList.remove('open'
    TELA DE BOAS-VINDAS
 ════════════════════════════════════════ */
 function checkFirstAccess(){
-  // Mostra boas-vindas se não há dados (sem pessoas e sem congregação configurada)
+  // Não mostra boas-vindas se dados vieram do Firestore (tem congregação)
+  if(currentCongId) return;
+  // Mostra boas-vindas só se não há dados locais
   const isNew = !state.congregacao && !state.people.length;
   if(isNew){
     const ws = document.getElementById('welcome-screen');
@@ -4212,13 +4214,16 @@ async function loadUserCongregacao(user){
         break;
       }
 
-      // Verifica se é membro
+      // Verifica se é membro pelo email
       const pessoasRef = collection(fbDb, 'congregacoes', congDoc.id, 'pessoas');
       const pessoasSnap = await getDocs(pessoasRef);
       for(const pDoc of pessoasSnap.docs){
-        if(pDoc.data().email === user.email){
+        const pEmail = (pDoc.data().email||'').toLowerCase().trim();
+        const uEmail = (user.email||'').toLowerCase().trim();
+        if(pEmail && pEmail === uEmail){
           foundCong = congDoc.id;
           foundIsAdmin = false;
+          console.log('[Cronos] Membro encontrado:', pDoc.data().name);
           break;
         }
       }
