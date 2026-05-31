@@ -4120,7 +4120,15 @@ async function loadUserCongregacao(user){
   try {
     // Busca congregações existentes
     const congsRef = collection(fbDb, 'congregacoes');
-    const congsSnap = await getDocs(congsRef);
+    let congsSnap;
+    try {
+      congsSnap = await getDocs(congsRef);
+    } catch(permErr) {
+      // Se não tem permissão de listar, banco pode estar vazio
+      console.log('[Cronos] Sem permissão para listar — criando primeira congregação');
+      await createFirstCongregacao(user);
+      return;
+    }
     console.log('[Cronos] Congregações encontradas:', congsSnap.size);
 
     // Banco vazio — cria primeira congregação
