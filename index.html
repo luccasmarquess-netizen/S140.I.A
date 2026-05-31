@@ -1751,6 +1751,7 @@ function savePersonModal(){
   if(!name){toast('Informe um nome',true);return;}
   const data={
     name,
+    email:(document.getElementById('pm-email')?.value||'').trim().toLowerCase(),
     role:document.getElementById('pm-role').value,
     reading:document.getElementById('pm-reading').checked,
     talks:document.getElementById('pm-talks').checked,
