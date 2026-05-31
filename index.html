@@ -4283,6 +4283,12 @@ async function initFirebaseAuth(){
     if(user){
       currentUser = user;
       document.getElementById('lock-screen').style.display='none';
+      // Garante que window._fb está disponível
+      if(!window._fb){
+        await new Promise(resolve=>{
+          const t=setInterval(()=>{ if(window._fb){clearInterval(t);resolve();} },50);
+        });
+      }
       // Verifica convite pendente antes de carregar congregação
       const conviteProcessado = await processarConvite(user);
       if(conviteProcessado){
@@ -4340,115 +4346,57 @@ async function signOutUser(){
 
 // Carrega a congregação do usuário
 async function loadUserCongregacao(user){
-  const {fbDb, doc, getDoc, collection, getDocs} = window._fb;
-  console.log('[Cronos] Carregando congregação para:', user.email);
+  const {fbDb, doc, getDoc, setDoc, collection, getDocs} = window._fb;
+  console.log('[Cronos] Carregando:', user.email, 'uid:', user.uid);
 
+  // Passo 1: tenta ler userDoc (uid → congId)
   try {
-    // Tenta usar congId salvo localmente primeiro
-    const savedCongId = localStorage.getItem('cronos-congId');
-    if(savedCongId){
-      const {doc: docFn, getDoc} = window._fb;
-      const configRef = docFn(fbDb, `congregacoes/${savedCongId}/config/config`);
-      try {
-        const configDoc = await getDoc(configRef);
-        if(configDoc.exists()){
-          const config = configDoc.data();
-          const uEmail = (user.email||'').toLowerCase();
-          if((config.admins||[]).map(a=>a.toLowerCase()).includes(uEmail)){
-            currentCongId = savedCongId;
-            isAdminUser = true;
-            console.log('[Cronos] Congregação encontrada pelo ID salvo (admin)');
-            await loadStateFromFirestore();
-            onUserLoaded();
-            return;
-          }
-        }
-      } catch(e){ console.warn('[Cronos] Erro ao buscar congId salvo:', e.message); }
+    console.log('[Cronos] Lendo userDoc para uid:', user.uid);
+    const userRef = doc(fbDb, `usuarios/${user.uid}`);
+    const userDoc = await getDoc(userRef);
+    console.log('[Cronos] userDoc existe:', userDoc.exists());
+    if(userDoc.exists()){
+      const {congId, isAdmin:adm} = userDoc.data();
+      if(congId){
+        currentCongId = congId;
+        isAdminUser = adm||false;
+        if(adm) localStorage.setItem('cronos-congId', congId);
+        console.log('[Cronos] userDoc encontrado:', congId, adm?'admin':'membro');
+        await loadStateFromFirestore();
+        onUserLoaded();
+        return;
+      }
     }
+  } catch(e){ console.warn('[Cronos] userDoc erro:', e.message); }
 
-    // Busca congregações existentes
-    const congsRef = collection(fbDb, 'congregacoes');
-    let congsSnap;
+  // Passo 2: tenta localStorage
+  const saved = localStorage.getItem('cronos-congId');
+  if(saved){
     try {
-      congsSnap = await getDocs(congsRef);
-    } catch(permErr) {
-      // Se não tem permissão de listar, tenta criar (só se não há congId salvo)
-      if(!savedCongId){
-        console.log('[Cronos] Sem permissão para listar — criando primeira congregação');
-        await createFirstCongregacao(user);
-      }
-      return;
-    }
-    console.log('[Cronos] Congregações encontradas:', congsSnap.size);
-
-    // Banco vazio — cria primeira congregação
-    if(congsSnap.empty){
-      console.log('[Cronos] Banco vazio — criando primeira congregação');
-      await createFirstCongregacao(user);
-      return;
-    }
-
-    let foundCong = null;
-    let foundIsAdmin = false;
-
-    for(const congDoc of congsSnap.docs){
-      // Busca config da congregação
-      const configRef = doc(fbDb, 'congregacoes', congDoc.id, 'config', 'config');
-      const configDoc = await getDoc(configRef);
-      const config = configDoc.exists() ? configDoc.data() : {};
-      const admins = config.admins||[];
-      const uEmail = (user.email||'').toLowerCase().trim();
-      console.log('[Cronos] Verificando cong:', congDoc.id, 'admins:', admins, 'userEmail:', uEmail);
-
-      // Verifica se é admin (case insensitive)
-      if(admins.some(a=>a.toLowerCase().trim()===uEmail)){
-        foundCong = congDoc.id;
-        foundIsAdmin = true;
-        console.log('[Cronos] É ADMIN em:', congDoc.id);
-        break;
-      }
-
-      // Verifica se é membro pelo email
-      const pessoasRef = collection(fbDb, 'congregacoes', congDoc.id, 'pessoas');
-      const pessoasSnap = await getDocs(pessoasRef);
-      for(const pDoc of pessoasSnap.docs){
-        const pEmail = (pDoc.data().email||'').toLowerCase().trim();
-        const uEmail = (user.email||'').toLowerCase().trim();
-        if(pEmail && pEmail === uEmail){
-          foundCong = congDoc.id;
-          foundIsAdmin = false;
-          console.log('[Cronos] Membro encontrado:', pDoc.data().name);
-          break;
+      const cfgRef = doc(fbDb, `congregacoes/${saved}/config/config`);
+      const cfgDoc = await getDoc(cfgRef);
+      if(cfgDoc.exists()){
+        const cfg = cfgDoc.data();
+        const em = (user.email||'').toLowerCase();
+        const adm = (cfg.admins||[]).some(a=>a.toLowerCase()===em);
+        if(adm){
+          currentCongId = saved;
+          isAdminUser = true;
+          // Cria/atualiza userDoc
+          try { await setDoc(doc(fbDb,`usuarios/${user.uid}`),{congId:saved,isAdmin:true,email:user.email},{merge:true}); } catch(e){}
+          console.log('[Cronos] localStorage cong:', saved);
+          await loadStateFromFirestore();
+          onUserLoaded();
+          return;
         }
       }
-      if(foundCong) break;
-    }
-
-    if(!foundCong){
-      console.log('[Cronos] Email não encontrado em nenhuma congregação:', user.email);
-      const err = document.getElementById('lock-error');
-      if(err){
-        err.style.display='block';
-        err.textContent='⚠ Conta não cadastrada. Entre em contato com o administrador da congregação.';
-      }
-      const {fbAuth, signOut} = window._fb;
-      await signOut(fbAuth);
-      document.getElementById('lock-screen').style.display='flex';
-      return;
-    }
-
-    currentCongId = foundCong;
-    if(foundIsAdmin) localStorage.setItem('cronos-congId', foundCong);
-    isAdminUser = foundIsAdmin;
-    console.log('[Cronos] Congregação:', currentCongId, 'Admin:', isAdminUser);
-    await loadStateFromFirestore();
-    onUserLoaded();
-
-  } catch(e){
-    console.error('[Cronos] Erro ao carregar congregação:', e);
-    // Fallback: usa localStorage
-    onUserLoaded();
+    } catch(e){ console.warn('[Cronos] localStorage cong erro:', e.message); }
+    localStorage.removeItem('cronos-congId');
   }
+
+  // Passo 3: cria primeira congregação
+  console.log('[Cronos] Criando primeira congregação');
+  await createFirstCongregacao(user);
 }
 
 // Cria a primeira congregação (setup inicial)
