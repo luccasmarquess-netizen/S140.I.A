@@ -5059,7 +5059,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   // Se Google já autenticou via auto_select, onGoogleLogin é chamado automaticamente
   renderSchedule();
   updateHeaderCong();
-  checkFirstAccess();
+  // checkFirstAccess é chamado pelo onUserLoaded após carregar o Firestore
 
   // Atalho Ctrl+Z para desfazer
   document.addEventListener('keydown', e=>{
