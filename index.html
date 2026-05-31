@@ -1833,9 +1833,10 @@ function renderPeople(){
         ${unavailStr!=='—'?`<span style="color:var(--warn)">Indisponível: ${unavailStr}</span><br>`:''}
         Habilitações: ${abilitiesStr}
       </td>
-      <td style="text-align:right">
-        <button class="icon-btn" onclick="openPersonModal('${p.id}')">✎</button>
-        <button class="icon-btn danger" onclick="deletePerson('${p.id}')">×</button>
+      <td style="text-align:right;white-space:nowrap">
+        <button class="icon-btn" onclick="openPersonModal('${p.id}')" title="Editar">✎</button>
+        ${!p.email?`<button class="icon-btn" onclick="gerarConvite('${p.id}')" title="Gerar link de convite" style="color:var(--elder)">🔗</button>`:''}
+        <button class="icon-btn danger" onclick="deletePerson('${p.id}')" title="Remover">×</button>
       </td>
     </tr>`;
   }).join('');
