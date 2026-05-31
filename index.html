@@ -15,7 +15,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-<script src="https://accounts.google.com/gsi/client" async defer onload="initGoogleLogin()"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <!-- Firebase SDK -->
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
@@ -4229,7 +4229,7 @@ window.triggerGoogleLogin = function(){
   }
 };
 
-// Inicializa o login Google programaticamente (mais confiável que declarativo)
+// initGoogleLogin não é mais necessário — Firebase Auth cuida do login
 function initGoogleLogin(){
   if(!window.google?.accounts?.id) return;
   google.accounts.id.initialize({
@@ -4344,15 +4344,39 @@ async function loadUserCongregacao(user){
   console.log('[Cronos] Carregando congregação para:', user.email);
 
   try {
+    // Tenta usar congId salvo localmente primeiro
+    const savedCongId = localStorage.getItem('cronos-congId');
+    if(savedCongId){
+      const {doc: docFn, getDoc} = window._fb;
+      const configRef = docFn(fbDb, `congregacoes/${savedCongId}/config/config`);
+      try {
+        const configDoc = await getDoc(configRef);
+        if(configDoc.exists()){
+          const config = configDoc.data();
+          const uEmail = (user.email||'').toLowerCase();
+          if((config.admins||[]).map(a=>a.toLowerCase()).includes(uEmail)){
+            currentCongId = savedCongId;
+            isAdminUser = true;
+            console.log('[Cronos] Congregação encontrada pelo ID salvo (admin)');
+            await loadStateFromFirestore();
+            onUserLoaded();
+            return;
+          }
+        }
+      } catch(e){ console.warn('[Cronos] Erro ao buscar congId salvo:', e.message); }
+    }
+
     // Busca congregações existentes
     const congsRef = collection(fbDb, 'congregacoes');
     let congsSnap;
     try {
       congsSnap = await getDocs(congsRef);
     } catch(permErr) {
-      // Se não tem permissão de listar, banco pode estar vazio
-      console.log('[Cronos] Sem permissão para listar — criando primeira congregação');
-      await createFirstCongregacao(user);
+      // Se não tem permissão de listar, tenta criar (só se não há congId salvo)
+      if(!savedCongId){
+        console.log('[Cronos] Sem permissão para listar — criando primeira congregação');
+        await createFirstCongregacao(user);
+      }
       return;
     }
     console.log('[Cronos] Congregações encontradas:', congsSnap.size);
@@ -4414,6 +4438,7 @@ async function loadUserCongregacao(user){
     }
 
     currentCongId = foundCong;
+    if(foundIsAdmin) localStorage.setItem('cronos-congId', foundCong);
     isAdminUser = foundIsAdmin;
     console.log('[Cronos] Congregação:', currentCongId, 'Admin:', isAdminUser);
     await loadStateFromFirestore();
@@ -4437,6 +4462,7 @@ async function createFirstCongregacao(user){
     criadoEm: new Date().toISOString(),
   });
   currentCongId = congId;
+  localStorage.setItem('cronos-congId', congId); // salva para próxima sessão
   isAdminUser = true;
   await loadStateFromFirestore();
   onUserLoaded();
@@ -4527,9 +4553,10 @@ async function saveToFirestore(){
       updatedAt: new Date().toISOString(),
     }, {merge:true});
 
-    // Mecânicas
+    // Mecânicas — limpa undefined antes de salvar
+    const mecLimpa = JSON.parse(JSON.stringify(state.mecanicas||{}, (k,v)=>v===undefined?null:v));
     await setDoc(doc(fbDb, base+`/mecanicas/${mesAtual}`), {
-      mecanicas: state.mecanicas,
+      mecanicas: mecLimpa,
       grupos:    state.grupos||[],
       limpeza:   state.limpeza||[],
       updatedAt: new Date().toISOString(),
