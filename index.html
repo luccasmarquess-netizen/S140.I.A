@@ -1835,7 +1835,7 @@ function renderPeople(){
   if(!list.length){tb.innerHTML='<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--muted)">Nenhuma pessoa encontrada.</td></tr>';return;}
   tb.innerHTML=list.map(p=>{
     const unavailStr=p.unavail?.length ? p.unavail.map(w=>'S'+(w+1)).join(', ') : '—';
-    const abilitiesStr=p.restrict?.length ? p.restrict.map(r=>RESTRICT_PARTS.find(x=>x.key===r)?.label||r).join(', ') : 'Todas';
+    const abilitiesStr=p.restrict?.length ? p.restrict.map(r=>RESTRICT_PARTS.find(x=>x.key===r)?.label||r).join(', ') : '⚠ Nenhuma habilitação';
     return `<tr>
       <td><strong>${esc(p.name)}</strong></td>
       <td><span class="tag ${ROLES[p.role].cls}">${ROLES[p.role].label}</span></td>
@@ -5048,10 +5048,19 @@ document.addEventListener('DOMContentLoaded',()=>{
   // Verifica convite na URL antes de qualquer coisa
   verificarConviteURL();
 
-  // Registra Service Worker (PWA)
+  // Limpa SWs antigos e registra novo
   if('serviceWorker' in navigator){
+    // Remove todos os SWs registrados (força atualização)
+    navigator.serviceWorker.getRegistrations().then(regs=>{
+      for(const reg of regs){
+        reg.update(); // força verificar atualização
+      }
+    });
     navigator.serviceWorker.register('/S140.I.A/sw.js')
-      .then(()=>console.log('[SW] Registrado'))
+      .then(reg=>{
+        reg.update(); // força atualização imediata
+        console.log('[SW] Registrado v2');
+      })
       .catch(e=>console.warn('[SW] Erro:',e));
   }
 
