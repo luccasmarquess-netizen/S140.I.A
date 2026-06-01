@@ -4085,11 +4085,9 @@ function closeGuia(){ document.getElementById('guia-bg').classList.remove('open'
    TELA DE BOAS-VINDAS
 ════════════════════════════════════════ */
 function checkFirstAccess(){
-  // Nunca mostra se já tem congregação no Firestore
+  // Só chamado de onUserLoaded — usuário já está logado
+  // Mostra welcome apenas se não tem congregação E não tem dados
   if(currentCongId) return;
-  // Nunca mostra se Firebase ainda não carregou
-  if(!_firebaseLoaded) return;
-  // Só mostra se realmente não há dados
   if(state.congregacao || state.people.length) return;
   const ws = document.getElementById('welcome-screen');
   if(ws) ws.style.display='flex';
@@ -4299,7 +4297,7 @@ async function initFirebaseAuth(){
       currentUser = null;
       _firebaseLoaded = true;
       renderFirebaseLoginScreen();
-      checkFirstAccess(); // usuário não logado — verifica se é primeiro acesso
+      // Não chama checkFirstAccess aqui — welcome só aparece para usuários logados
     }
   });
 }
