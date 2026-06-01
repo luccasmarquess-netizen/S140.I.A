@@ -2752,7 +2752,7 @@ function renderCampo(){
     h += `<tr style="${rowBg}">
       <td style="font-weight:600;text-align:center">${String(d.day).padStart(2,'0')}</td>
       <td>${esc(dowName)} ${esc(d.periodo)}</td>
-      <td style="text-align:center">${esc(d.hora)}</td>
+      <td style="text-align:center">${esc(horaEfetiva)}</td>
       <td>${renderCampoPicker(d.key,'dirigente',des.dirigente)}</td>
       <td>
         <select onchange="setCampoLocal('${d.key}',this.value)"
