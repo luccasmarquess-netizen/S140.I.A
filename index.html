@@ -892,10 +892,12 @@ table.t tr:hover td{background:#fafaf7}
   <div class="form-row">
     <label>Locais de pregação</label>
     <div id="locais-list" style="margin-bottom:8px"></div>
-    <div style="display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:8px">
-      <input type="text" id="local-input" placeholder="Ex: Poloni, Junqueira, Rural">
+    <div style="display:grid;grid-template-columns:1fr 100px auto;gap:8px;margin-bottom:8px">
+      <input type="text" id="local-input" placeholder="Ex: Poloni, Rural">
+      <input type="text" id="local-hora-input" placeholder="Horário ex: 07:45" style="padding:7px 9px;border:1px solid var(--line);font-family:inherit;font-size:13px;border-radius:2px">
       <button class="btn" onclick="addLocal()">+ Adicionar</button>
     </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Horário específico do local (opcional — sobrepõe o horário padrão do dia)</div>
     <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Dias permitidos (vazio = todos os dias):</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <label style="display:flex;align-items:center;gap:3px;font-size:12px;cursor:pointer"><input type="checkbox" class="local-dia-cb" value="0"> Dom</label>
@@ -1134,6 +1136,18 @@ function loadState(){
           for(const f of ['audio','video','microfone','palco','indicador']){
             if(s.mecanicas[n][r][f]===undefined) s.mecanicas[n][r][f]=null;
           }
+        }
+      }
+    }
+    // Migração: 'mecanicas' → 'mec-audio' (habilitações separadas)
+    if(s.people){
+      for(const p of s.people){
+        if((p.restrict||[]).includes('mecanicas')){
+          p.restrict = p.restrict.filter(r=>r!=='mecanicas');
+          if(!p.restrict.includes('mec-audio')) p.restrict.push('mec-audio');
+          if(!p.restrict.includes('mec-palco')) p.restrict.push('mec-palco');
+          if(!p.restrict.includes('mec-mic'))   p.restrict.push('mec-mic');
+          if(!p.restrict.includes('mec-ind'))   p.restrict.push('mec-ind');
         }
       }
     }
@@ -2605,8 +2619,9 @@ function renderLocaisList(){
   const diasNomes=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
   el.innerHTML = locais.map((l,i)=>{
     const diasStr = l.dias?.length ? l.dias.map(d=>diasNomes[d]).join(', ') : 'Todos os dias';
+    const horaStr = l.hora ? ` · ${l.hora}` : '';
     return `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#fafaf7;border:1px solid var(--line);border-radius:2px;margin-bottom:4px;font-size:13px">
-      <span style="flex:1"><strong>${esc(l.nome)}</strong> <span style="color:var(--muted);font-size:11px">${diasStr}</span></span>
+      <span style="flex:1"><strong>${esc(l.nome)}</strong> <span style="color:var(--muted);font-size:11px">${diasStr}${horaStr}</span></span>
       <button class="icon-btn danger" onclick="removeLocal(${i})">×</button>
     </div>`;
   }).join('');
@@ -2615,15 +2630,15 @@ function addLocal(){
   const nome = document.getElementById('local-input').value.trim();
   if(!nome) return;
   if(!state.campoLocais) state.campoLocais=[];
-  // Coleta dias selecionados
   const dias = [...document.querySelectorAll('.local-dia-cb:checked')].map(cb=>parseInt(cb.value));
-  // Migra: se campoLocais ainda tem strings, converte
-  state.campoLocais = state.campoLocais.map(l=>typeof l==='string' ? {nome:l, dias:[]} : l);
+  const hora = document.getElementById('local-hora-input')?.value.trim()||'';
+  state.campoLocais = state.campoLocais.map(l=>typeof l==='string' ? {nome:l, dias:[], hora:''} : l);
   if(!state.campoLocais.find(l=>l.nome===nome)){
-    state.campoLocais.push({nome, dias});
+    state.campoLocais.push({nome, dias, hora});
   }
   save(); renderLocaisList();
   document.getElementById('local-input').value='';
+  if(document.getElementById('local-hora-input')) document.getElementById('local-hora-input').value='';
   document.querySelectorAll('.local-dia-cb').forEach(cb=>cb.checked=false);
 }
 function removeLocal(i){ state.campoLocais.splice(i,1); save(); renderLocaisList(); }
@@ -2727,6 +2742,8 @@ function renderCampo(){
 
   for(const d of days){
     const des = state.campoDesignacoes[d.key]||{dirigente:null,local:''};
+        const localConfig = (state.campoLocais||[]).find(l=>(typeof l==='string'?l:l.nome)===des.local);
+        const horaEfetiva = (localConfig?.hora)||d.hora;
     const person = des.dirigente ? state.people.find(p=>p.id===des.dirigente) : null;
     const dowName = DIAS_SEMANA[d.dow];
     const isWeekend = d.dow===0||d.dow===6;
