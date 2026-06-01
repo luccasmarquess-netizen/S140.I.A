@@ -2786,7 +2786,6 @@ function fillCampoPicker(pickerEl, key, field){
 
   // Pool: habilitados para campo, filtrados por dia se configurado
   const pool = state.people.filter(p=>{
-    if(p.role==='female') return false;
     if(!(p.restrict||[]).includes('campo')) return false;
     if(dirigentesPermitidos.length>0 && !dirigentesPermitidos.includes(p.id)) return false;
     return true;
@@ -2839,7 +2838,6 @@ function sugerirCampo(){
 
   // Para sugestão, usa pool geral; filtro por dia é aplicado por saída
   const poolGeral=state.people.filter(p=>{
-    if(p.role==='female') return false;
     return (p.restrict||[]).includes('campo');
   });
   if(!poolGeral.length){toast('Nenhum dirigente de campo habilitado. Habilite em Pessoas → Dirigente de campo',true);return;}
@@ -2974,7 +2972,6 @@ function editDiaDirigentes(diaIdx){
   if(!dia) return;
   // Pool: todos com habilitação campo
   const pool = state.people.filter(p=>{
-    if(p.role==='female') return false;
     return (p.restrict||[]).includes('campo');
   });
   if(!pool.length){ toast('Nenhum dirigente de campo habilitado. Configure em Pessoas.',true); return; }
