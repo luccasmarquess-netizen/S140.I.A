@@ -2930,8 +2930,15 @@ function printCampo(){
   const area=document.getElementById('mec-print-area');
   area.innerHTML=printHtml;
   area.style.display='block';
-  window.print();
-  setTimeout(()=>{area.style.display='none';area.innerHTML='';},1500);
+  // Aguarda render antes de imprimir
+  requestAnimationFrame(()=>{
+    window.print();
+    // Limpa após impressão (evento afterprint mais confiável)
+    const cleanup=()=>{ area.style.display='none'; area.innerHTML=''; window.removeEventListener('afterprint',cleanup); };
+    window.addEventListener('afterprint', cleanup);
+    // Fallback caso afterprint não dispare
+    setTimeout(cleanup, 5000);
+  });
 }
 
 
@@ -3310,8 +3317,12 @@ function printMecanicas(){
   html2 += `</div>`;
   area.innerHTML = html2;
   area.style.display = 'block';
-  window.print();
-  setTimeout(()=>{ area.style.display='none'; area.innerHTML=''; }, 1500);
+  requestAnimationFrame(()=>{
+    window.print();
+    const cleanup=()=>{ area.style.display='none'; area.innerHTML=''; window.removeEventListener('afterprint',cleanup); };
+    window.addEventListener('afterprint', cleanup);
+    setTimeout(cleanup, 5000);
+  });
 }
 
 /* ════════════════════════════════════════
