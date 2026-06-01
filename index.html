@@ -990,8 +990,11 @@ const RESTRICT_PARTS = [
   {key:'fsm',        label:'Faça Seu Melhor'},
   {key:'nvc',        label:'Nossa Vida Cristã'},
   {key:'ebc',        label:'EBC (dirigente/leitor)'},
-  {key:'mecanicas',  label:'Mecânicas (áudio/vídeo)'},
-  {key:'campo',      label:'Dirigente de campo'},
+  {key:'mec-audio',   label:'Mecânicas — Áudio/Vídeo'},
+  {key:'mec-palco',   label:'Mecânicas — Palco'},
+  {key:'mec-mic',     label:'Mecânicas — Microfone'},
+  {key:'mec-ind',     label:'Mecânicas — Indicador'},
+  {key:'campo',       label:'Dirigente de campo'},
 ];
 
 // Definição das partes da reunião (por semana)
@@ -1777,7 +1780,8 @@ function renderRestrictTags(){
         Publicadoras participam do Faça Seu Melhor e podem dirigir o campo.
       </div>
       <div class="restrict-tag${tempRestrict.includes('fsm')?' on':''}" onclick="toggleRestrict('fsm')">Faça Seu Melhor (estudante/ajudante)</div>
-      <div class="restrict-tag${tempRestrict.includes('campo')?' on':''}" onclick="toggleRestrict('campo')">Dirigente de campo</div>`;
+      <div class="restrict-tag${tempRestrict.includes('campo')?' on':''}" onclick="toggleRestrict('campo')">Dirigente de campo</div>
+    `;
     return;
   }
 
@@ -3071,11 +3075,23 @@ function emptyMecanicas(){
   return m;
 }
 
-function eligibleMecanica(weekIdx=null){
+// Retorna pessoas elegíveis para uma função específica de mecânica
+function eligibleMecanica(weekIdx=null, funcao=null){
+  // Mapa função → chave de habilitação
+  const mecMap = {audio:'mec-audio',video:'mec-audio',palco:'mec-palco',microfone:'mec-mic',indicador:'mec-ind'};
+  const requiredKey = funcao ? mecMap[funcao] : null;
+
   return state.people.filter(p=>{
     if(p.role==='female') return false;
-    // Opt-in estrito: deve ter "mecanicas" habilitado
-    if(!(p.restrict||[]).includes('mecanicas')) return false;
+    const abilities = p.restrict||[];
+    // Opt-in estrito: deve ter a habilitação da função específica
+    // OU se não especificou função, deve ter pelo menos uma hab. de mecânica
+    if(requiredKey){
+      if(!abilities.includes(requiredKey)) return false;
+    } else {
+      const hasMec = abilities.some(a=>a.startsWith('mec-'));
+      if(!hasMec) return false;
+    }
     if(weekIdx!==null && (p.unavail||[]).includes(weekIdx)) return false;
     return true;
   });
@@ -3338,19 +3354,41 @@ function printMecanicas(){
   }
 
   html2 += `</div>`;
-  const w2 = window.open('','_blank','width=800,height=600');
-  w2.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Mecânicas</title>'+
-    '<style>body{font-family:Arial,sans-serif;margin:0;padding:12mm}table{width:100%;border-collapse:collapse}'+
-    'th{background:#555;color:#fff;padding:4pt 6pt;font-size:9pt;text-align:left;border:1px solid #888}'+
-    'td{padding:4pt 6pt;font-size:10pt;border:1px solid #ccc}'+
-    'tr:nth-child(even) td{background:#f5f5f5}'+
-    '.mec-week-header{background:#1a1a1a;color:#fff;padding:5pt 8pt;font-size:11pt;font-weight:bold;margin:8pt 0 4pt}'+
-    '@media print{@page{margin:10mm}}</style></head><body>');
-  w2.document.write(html2);
-  w2.document.write('</body></html>');
+  const cong2 = esc(state.congregacao||'Congregação');
+  const MESES3=['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const now2 = new Date();
+  const w2 = window.open('','_blank','width=850,height=700');
+  w2.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
+  <title>Mecânicas</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Arial,sans-serif;font-size:10pt;color:#111}
+    .page{padding:10mm 12mm}
+    .header{text-align:center;margin-bottom:12pt;border-bottom:2px solid #111;padding-bottom:6pt}
+    .header h1{font-size:14pt;font-weight:bold;text-transform:uppercase;letter-spacing:.05em}
+    .header h2{font-size:10pt;font-weight:normal;color:#444;margin-top:3pt}
+    .week{margin-bottom:10pt;break-inside:avoid}
+    .week-title{background:#111;color:#fff;padding:4pt 8pt;font-size:11pt;font-weight:bold}
+    table{width:100%;border-collapse:collapse;margin-top:2pt}
+    th{background:#444;color:#fff;padding:4pt 7pt;font-size:9pt;text-align:left;border:1px solid #666}
+    td{padding:4pt 7pt;border:1px solid #ccc;font-size:10pt}
+    tr:nth-child(even) td{background:#f5f5f5}
+    .limpeza-row td{background:#e8e8e8;font-style:italic;font-size:9pt}
+    .evento-row td{text-align:center;color:#666;font-style:italic;padding:8pt}
+    .footer{margin-top:10pt;font-size:8pt;color:#888;text-align:center;border-top:1px solid #ccc;padding-top:5pt}
+    @media print{@page{margin:8mm}}
+  </style>
+  </head><body><div class="page">
+  <div class="header">
+    <h1>Designação Mecânica — ${MESES3[now2.getMonth()+1]} ${now2.getFullYear()}</h1>
+    <h2>${cong2}</h2>
+  </div>
+  ${html2}
+  <div class="footer">Cronos · Programador de Reunião · ${cong2}</div>
+  </div></body></html>`);
   w2.document.close();
   w2.focus();
-  setTimeout(()=>{ w2.print(); w2.close(); }, 500);
+  setTimeout(()=>{ w2.print(); w2.close(); }, 600);
 }
 
 /* ════════════════════════════════════════
