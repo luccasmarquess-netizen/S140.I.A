@@ -787,7 +787,7 @@ table.t tr:hover td{background:#fafaf7}
         <li>Configure os <strong>dias recorrentes</strong> e <strong>locais</strong> em ⚙ Configurar</li>
         <li>Selecione o mês — a tabela mostra todos os dias daquele mês automaticamente</li>
         <li>Use <strong>✨ Sugerir dirigentes</strong> para distribuir automaticamente</li>
-        <li>Imprima a <strong>Lista de Grupo</strong> no formato padrão com 🖨</li>
+        <li>Imprima a <strong>Lista de Campo</strong> no formato padrão com 🖨</li>
       </ul>
     </details>
 
@@ -2927,7 +2927,7 @@ function printCampo(){
 
   const w = window.open('','_blank','width=850,height=700');
   w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
-  <title>Lista de Grupo — ${MESES2[month]} ${year}</title>
+  <title>Lista de Campo — ${MESES2[month]} ${year}</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: Arial, sans-serif; font-size: 11pt; color: #111; }
@@ -2953,7 +2953,7 @@ function printCampo(){
   </style>
   </head><body><div class="page">
   <div class="header">
-    <h1>Lista de Grupo — ${MESES2[month]} ${year}</h1>
+    <h1>Lista de Campo — ${MESES2[month]} ${year}</h1>
     <h2>${cong}</h2>
   </div>
   ${printHtml}
