@@ -2927,18 +2927,17 @@ function printCampo(){
     </table>
   </div>`;
 
-  const area=document.getElementById('mec-print-area');
-  area.innerHTML=printHtml;
-  area.style.display='block';
-  // Aguarda render antes de imprimir
-  requestAnimationFrame(()=>{
-    window.print();
-    // Limpa após impressão (evento afterprint mais confiável)
-    const cleanup=()=>{ area.style.display='none'; area.innerHTML=''; window.removeEventListener('afterprint',cleanup); };
-    window.addEventListener('afterprint', cleanup);
-    // Fallback caso afterprint não dispare
-    setTimeout(cleanup, 5000);
-  });
+  // Abre nova janela para impressão
+  const w = window.open('','_blank','width=800,height=600');
+  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Lista de Grupo</title>'+
+    '<style>body{font-family:Arial,sans-serif;margin:0;padding:15mm}table{width:100%;border-collapse:collapse}'+
+    'th,td{padding:5pt 7pt;border-bottom:1px solid #ccc}th{border-bottom:2px solid #333;font-weight:600}'+
+    '@media print{@page{margin:10mm}}</style></head><body>');
+  w.document.write(printHtml);
+  w.document.write('</body></html>');
+  w.document.close();
+  w.focus();
+  setTimeout(()=>{ w.print(); w.close(); }, 500);
 }
 
 
@@ -3315,14 +3314,19 @@ function printMecanicas(){
   }
 
   html2 += `</div>`;
-  area.innerHTML = html2;
-  area.style.display = 'block';
-  requestAnimationFrame(()=>{
-    window.print();
-    const cleanup=()=>{ area.style.display='none'; area.innerHTML=''; window.removeEventListener('afterprint',cleanup); };
-    window.addEventListener('afterprint', cleanup);
-    setTimeout(cleanup, 5000);
-  });
+  const w2 = window.open('','_blank','width=800,height=600');
+  w2.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Mecânicas</title>'+
+    '<style>body{font-family:Arial,sans-serif;margin:0;padding:12mm}table{width:100%;border-collapse:collapse}'+
+    'th{background:#555;color:#fff;padding:4pt 6pt;font-size:9pt;text-align:left;border:1px solid #888}'+
+    'td{padding:4pt 6pt;font-size:10pt;border:1px solid #ccc}'+
+    'tr:nth-child(even) td{background:#f5f5f5}'+
+    '.mec-week-header{background:#1a1a1a;color:#fff;padding:5pt 8pt;font-size:11pt;font-weight:bold;margin:8pt 0 4pt}'+
+    '@media print{@page{margin:10mm}}</style></head><body>');
+  w2.document.write(html2);
+  w2.document.write('</body></html>');
+  w2.document.close();
+  w2.focus();
+  setTimeout(()=>{ w2.print(); w2.close(); }, 500);
 }
 
 /* ════════════════════════════════════════
