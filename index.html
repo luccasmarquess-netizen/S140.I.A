@@ -1774,9 +1774,10 @@ function renderRestrictTags(){
   if(isFemale){
     c.innerHTML = `
       <div style="font-size:12px;color:var(--muted);margin-bottom:6px;font-style:italic">
-        Publicadoras participam apenas do Faça Seu Melhor no Ministério.
+        Publicadoras participam do Faça Seu Melhor e podem dirigir o campo.
       </div>
-      <div class="restrict-tag${tempRestrict.includes('fsm')?' on':''}" onclick="toggleRestrict('fsm')">Faça Seu Melhor (estudante/ajudante)</div>`;
+      <div class="restrict-tag${tempRestrict.includes('fsm')?' on':''}" onclick="toggleRestrict('fsm')">Faça Seu Melhor (estudante/ajudante)</div>
+      <div class="restrict-tag${tempRestrict.includes('campo')?' on':''}" onclick="toggleRestrict('campo')">Dirigente de campo</div>`;
     return;
   }
 
