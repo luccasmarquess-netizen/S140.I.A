@@ -2919,14 +2919,15 @@ function printCampo(){
     const des=state.campoDesignacoes[d.key]||{};
     const pname=des.dirigente?personName(des.dirigente):'—';
     const local=des.local||'—';
+    const localCfgP=(state.campoLocais||[]).find(l=>(typeof l==='string'?l:l.nome)===des.local);
+    const horaP=(localCfgP?.hora)||d.hora;
     const isWeekend=d.dow===0||d.dow===6;
-    const bg=isWeekend?'background:#f0f0f0':'';
-    rows+=`<tr style="${bg}">
-      <td style="text-align:center;font-weight:600">${String(d.day).padStart(2,'0')}</td>
-      <td>${DIAS_SEMANA[d.dow]} ${esc(d.periodo)}</td>
-      <td style="text-align:center">${esc(d.hora)}</td>
-      <td>${esc(pname)}</td>
-      <td>${esc(local)}</td>
+    rows+=`<tr class="${isWeekend?'weekend':''}">
+      <td class="col-dia">${String(d.day).padStart(2,'0')}</td>
+      <td class="col-periodo">${DIAS_SEMANA[d.dow]} ${esc(d.periodo)}</td>
+      <td class="col-hora">${esc(horaP)}</td>
+      <td class="col-dirigente">${esc(pname)}</td>
+      <td class="col-local">${esc(local)}</td>
     </tr>`;
   }
 
