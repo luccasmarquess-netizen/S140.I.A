@@ -2140,6 +2140,12 @@ function parseJwHtml(raw){
   const tesouroTema = tParts[0]?.title||'';
   const ok = uniqSongs.length>0||fParts.length>0||nParts.length>0||!!tesouroTema;
 
+  console.log('[Parser] tParts:', tParts.map(p=>p.title));
+  console.log('[Parser] fParts:', fParts.map(p=>p.title));
+  console.log('[Parser] nParts:', nParts.map(p=>p.title));
+  console.log('[Parser] songs:', uniqSongs);
+  console.log('[Parser] idxT:', idxT, 'idxF:', idxF, 'idxN:', idxN);
+
   return {
     ok,
     songs: uniqSongs,
