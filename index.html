@@ -2140,12 +2140,6 @@ function parseJwHtml(raw){
   const tesouroTema = tParts[0]?.title||'';
   const ok = uniqSongs.length>0||fParts.length>0||nParts.length>0||!!tesouroTema;
 
-  console.log('[Parser] tParts:', tParts.map(p=>p.title));
-  console.log('[Parser] fParts:', fParts.map(p=>p.title));
-  console.log('[Parser] nParts:', nParts.map(p=>p.title));
-  console.log('[Parser] songs:', uniqSongs);
-  console.log('[Parser] idxT:', idxT, 'idxF:', idxF, 'idxN:', idxN);
-
   return {
     ok,
     songs: uniqSongs,
@@ -2275,13 +2269,16 @@ function applyApostila(){
     if(wk.songs[0]) w.N_CANTICO1=wk.songs[0];
     if(wk.songs[1]) w.N_CANTICO2=wk.songs[1];
     if(wk.songs[2]) w.N_CANTICO3=wk.songs[2];
+    // Limpa campos antes de aplicar (evita dados antigos do Firestore)
+    w.TESOURO_TEMA=''; w.FSM1_TEMA=''; w.FSM1_DUR=''; w.FSM2_TEMA=''; w.FSM2_DUR='';
+    w.FSM3_TEMA=''; w.FSM3_DUR=''; w.NVC1_TEMA=''; w.NVC1_DUR=''; w.NVC2_TEMA=''; w.NVC2_DUR='';
+
     if(wk.tesouroTema) w.TESOURO_TEMA=wk.tesouroTema;
     const fsm=wk.fsm||[];
     if(fsm[0]){if(fsm[0].tema)w.FSM1_TEMA=fsm[0].tema;if(fsm[0].dur)w.FSM1_DUR=fsm[0].dur;}
     if(fsm[1]){if(fsm[1].tema)w.FSM2_TEMA=fsm[1].tema;if(fsm[1].dur)w.FSM2_DUR=fsm[1].dur;}
     if(fsm[2]){if(fsm[2].tema)w.FSM3_TEMA=fsm[2].tema;if(fsm[2].dur)w.FSM3_DUR=fsm[2].dur;}
     const nvc=wk.nvc||[];
-    // Filtra EBC da lista NVC — tem campo próprio
     const nvcSemEBC = nvc.filter(p=>!/estudo\s+b[íi]blico/i.test(p.tema||''));
     if(nvcSemEBC[0]){if(nvcSemEBC[0].tema)w.NVC1_TEMA=nvcSemEBC[0].tema;if(nvcSemEBC[0].dur)w.NVC1_DUR=nvcSemEBC[0].dur;}
     if(nvcSemEBC[1]){if(nvcSemEBC[1].tema)w.NVC2_TEMA=nvcSemEBC[1].tema;if(nvcSemEBC[1].dur)w.NVC2_DUR=nvcSemEBC[1].dur;}
