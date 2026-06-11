@@ -2275,8 +2275,10 @@ function applyApostila(){
     if(fsm[1]){if(fsm[1].tema)w.FSM2_TEMA=fsm[1].tema;if(fsm[1].dur)w.FSM2_DUR=fsm[1].dur;}
     if(fsm[2]){if(fsm[2].tema)w.FSM3_TEMA=fsm[2].tema;if(fsm[2].dur)w.FSM3_DUR=fsm[2].dur;}
     const nvc=wk.nvc||[];
-    if(nvc[0]){if(nvc[0].tema)w.NVC1_TEMA=nvc[0].tema;if(nvc[0].dur)w.NVC1_DUR=nvc[0].dur;}
-    if(nvc[1]){if(nvc[1].tema)w.NVC2_TEMA=nvc[1].tema;if(nvc[1].dur)w.NVC2_DUR=nvc[1].dur;}
+    // Filtra EBC da lista NVC — tem campo próprio
+    const nvcSemEBC = nvc.filter(p=>!/estudo\s+b[íi]blico/i.test(p.tema||''));
+    if(nvcSemEBC[0]){if(nvcSemEBC[0].tema)w.NVC1_TEMA=nvcSemEBC[0].tema;if(nvcSemEBC[0].dur)w.NVC1_DUR=nvcSemEBC[0].dur;}
+    if(nvcSemEBC[1]){if(nvcSemEBC[1].tema)w.NVC2_TEMA=nvcSemEBC[1].tema;if(nvcSemEBC[1].dur)w.NVC2_DUR=nvcSemEBC[1].dur;}
     applied++;
   });
   save();closeImportModal();renderSchedule();
