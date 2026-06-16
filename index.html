@@ -2114,7 +2114,7 @@ function parseJwHtml(raw){
   // Extrai partes de um bloco HTML usando <h3>N. Título</h3> + duração próxima
   function extractParts(block){
     const parts=[];
-    const h3Rx=/<h3[^>]*>\s*(\d{1,2})\.\s*([\s\S]{3,150}?)\s*<\/h3>/gi;
+    const h3Rx=/<h3[^>]*>\s*(\d{1,2})\.\s*([\s\S]{3,400}?)\s*<\/h3>/gi;
     let m;
     while((m=h3Rx.exec(block))!==null){
       const num=parseInt(m[1]);
@@ -2387,6 +2387,16 @@ async function buildDocxBlob(weekIndices){
       else if(part.type==='pair') val=pairName(w[part.tag]);
       else val=w[part.tag]||'';
       xml=xml.replaceAll('{{'+tag+'}}',escXml(String(val)));
+    }
+
+    // Se NVC1/NVC2 estão vazios, zera a duração também (evita "( min)" no PDF)
+    if(!w.NVC1_TEMA){
+      xml=xml.replaceAll(`{{S${n}_NVC1_DUR}}`,'');
+      xml=xml.replaceAll(`{{S${n}_NVC1_NOME}}`,'');
+    }
+    if(!w.NVC2_TEMA){
+      xml=xml.replaceAll(`{{S${n}_NVC2_DUR}}`,'');
+      xml=xml.replaceAll(`{{S${n}_NVC2_NOME}}`,'');
     }
   }
 
