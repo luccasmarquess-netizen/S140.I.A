@@ -2411,23 +2411,13 @@ async function doPrint(){
   if(!pdfWeeks.length){ toast('Selecione ao menos uma semana',true); return; }
   toast('Preparando PDF…');
   try {
-    // Garante que o preview está renderizado
-    const previewEl=document.getElementById('pdf-docx-preview');
-    if(!previewEl.innerHTML || previewEl.style.display==='none'){
-      await refreshPdfPreview();
-    }
-
-    // Cria um div invisível fora do fluxo normal para impressão
-    let frame=document.getElementById('pdf-print-frame');
-    if(frame) frame.remove();
-    frame=document.createElement('div');
-    frame.id='pdf-print-frame';
-    frame.style.cssText='display:none;';
-    frame.innerHTML=previewEl.innerHTML;
-    document.body.appendChild(frame);
-
-    window.print();
-    setTimeout(()=>{ frame.remove(); },1500);
+    const docxBlob = await buildDocxBlob(pdfWeeks);
+    const url = URL.createObjectURL(docxBlob);
+    // Abre numa nova janela para impressão
+    const w = window.open(url, '_blank');
+    if(!w){ toast('Popup bloqueado. Permita popups para este site.',true); URL.revokeObjectURL(url); return; }
+    setTimeout(()=>URL.revokeObjectURL(url), 30000);
+    toast('Arquivo aberto! Use Ctrl+P ou salve como PDF.');
   } catch(e){
     toast('Erro: '+e.message, true);
   }
