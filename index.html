@@ -672,19 +672,7 @@ table.t tr:hover td{background:#fafaf7}
 </div>
 </div>
 
-<!-- PDF Modal -->
-<div class="modal-bg" id="pdf-modal-bg" onclick="if(event.target===this)closePdfModal()" style="z-index:2500">
-<div class="modal print-preview-modal" style="max-width:720px">
-  <h2>Exportar PDF</h2>
-  <p style="font-size:13px;color:var(--ink2);margin-bottom:14px">Escolha as semanas e clique em Imprimir. Use "Salvar como PDF" na caixa de diálogo do navegador.</p>
-  <div id="pdf-week-checks" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px"></div>
-  <div id="pdf-preview"></div>
-  <div class="actions" style="margin-top:14px">
-    <button class="btn ghost" onclick="closePdfModal()">Fechar</button>
-    <button class="btn" onclick="doPrint()">🖨 Imprimir / Salvar PDF</button>
-  </div>
-</div>
-</div>
+
 
 <div class="toast" id="toast"></div>
 
