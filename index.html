@@ -2440,12 +2440,8 @@ function printS140(){
   const weeks = state.weeks;
   const cong = esc(state.congregacao||'');
 
-  function pName(id){ return id ? (pessoas.find(p=>p.id===id)||{name:''}).name : ''; }
-  function pPair(obj){
-    if(!obj) return '';
-    const a = pName(obj.a), b = pName(obj.b);
-    return a&&b ? a+' / '+b : a||b||'';
-  }
+  const pName = personName;
+  const pPair = pairName;
   function v(val){ return escHtml(String(val||'')); }
   function escHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
