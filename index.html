@@ -398,6 +398,7 @@ table.t tr:hover td{background:#fafaf7}
     <div style="display:flex;gap:8px">
       <button class="btn ghost sm" onclick="printMecanicas()">🖨 Imprimir</button>
       <button class="btn sm" onclick="sugerirMecanicas()" style="background:var(--servant);border-color:var(--servant)">✨ Sugerir designações</button>
+      <button class="icon-btn danger" onclick="limparMecanicasTudo()" title="Limpar todas as designações de mecânica e limpeza das 5 semanas">🗑 Limpar tudo</button>
     </div>
   </div>
   <div id="mecanicas-container"></div>
@@ -3255,6 +3256,16 @@ const REUNIOES = [
   {key:'mds', label:'Meio de Semana'},
   {key:'fds', label:'Fim de Semana'},
 ];
+
+function limparMecanicasTudo(){
+  if(!confirm('Limpar TODAS as designações de mecânica e limpeza das 5 semanas? Esta ação não pode ser desfeita.')) return;
+  state.mecanicas = emptyMecanicas();
+  state.limpeza = Array(5).fill(null).map(()=>({grupo:null}));
+  save();
+  renderMecanicas();
+  if(typeof renderLimpeza==='function') renderLimpeza();
+  toast('Designações de mecânica e limpeza apagadas');
+}
 
 function emptyMecanicas(){
   const m = {};
