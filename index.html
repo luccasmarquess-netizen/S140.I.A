@@ -3459,7 +3459,7 @@ function sugerirMecanicas(){
       for(const f of MECANICA_FUNCOES){
         if(state.mecanicas[n]?.[r.key]?.[f.key]) continue; // já preenchido
         // Escolhe quem fez menos no mês e não está nesta sessão
-        const weekPool = eligibleMecanica(n);
+        const weekPool = eligibleMecanica(n, f.key);
         const sorted = [...weekPool].sort((a,b)=>{
           const ca=countMecMonth(a.id), cb=countMecMonth(b.id);
           if(ca!==cb) return ca-cb;
@@ -3562,7 +3562,16 @@ function printMecanicas(){
   html2 += `</div>`;
   const cong2 = esc(state.congregacao||'Congregação');
   const MESES3=['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  // Deriva mês/ano das datas das semanas (não de new Date())
   const now2 = new Date();
+  let tituloMes = MESES3[now2.getMonth()+1] + ' ' + now2.getFullYear();
+  const primeiraData = state.weeks.map(w=>w.DATA||'').find(Boolean)||'';
+  const matchMes = primeiraData.match(/de\s+(\w+)\s+de\s+(\d{4})/i);
+  if(matchMes){
+    const nomeMes = matchMes[1].charAt(0).toUpperCase()+matchMes[1].slice(1).toLowerCase();
+    const idx = MESES3.findIndex(m=>m.toLowerCase()===nomeMes.toLowerCase());
+    if(idx>0) tituloMes = MESES3[idx] + ' ' + matchMes[2];
+  }
   const w2 = window.open('','_blank','width=850,height=700');
   w2.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
   <title>Mecânicas</title>
@@ -3586,7 +3595,7 @@ function printMecanicas(){
   </style>
   </head><body><div class="page">
   <div class="header">
-    <h1>Designação Mecânica — ${MESES3[now2.getMonth()+1]} ${now2.getFullYear()}</h1>
+    <h1>Designação Mecânica — ${tituloMes}</h1>
     <h2>${cong2}</h2>
   </div>
   ${html2}
