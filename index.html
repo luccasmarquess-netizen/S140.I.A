@@ -3562,15 +3562,15 @@ function printMecanicas(){
   html2 += `</div>`;
   const cong2 = esc(state.congregacao||'Congregação');
   const MESES3=['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-  // Deriva mês/ano das datas das semanas (não de new Date())
   const now2 = new Date();
   let tituloMes = MESES3[now2.getMonth()+1] + ' ' + now2.getFullYear();
   const primeiraData = state.weeks.map(w=>w.DATA||'').find(Boolean)||'';
-  const matchMes = primeiraData.match(/de\s+(\w+)\s+de\s+(\d{4})/i);
+  // DATA formato: "1 a 7 de junho" ou "29 de junho a 5 de julho"
+  const matchMes = primeiraData.match(/de\s+([a-záàãâéêíóôõúç]+)/i);
   if(matchMes){
     const nomeMes = matchMes[1].charAt(0).toUpperCase()+matchMes[1].slice(1).toLowerCase();
     const idx = MESES3.findIndex(m=>m.toLowerCase()===nomeMes.toLowerCase());
-    if(idx>0) tituloMes = MESES3[idx] + ' ' + matchMes[2];
+    if(idx>0) tituloMes = MESES3[idx] + ' ' + now2.getFullYear();
   }
   const w2 = window.open('','_blank','width=850,height=700');
   w2.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
