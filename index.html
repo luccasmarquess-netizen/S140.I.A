@@ -1420,14 +1420,10 @@ function clearWeek(){
   state.weeks[activeWeek]=emptyWeek();
   save();renderSchedule();toast('Semana limpa');
 }
-function toggleCancelDiaCampo(n, key, checked){
-  if(!state.weeks[n]._cancelDiasCampo) state.weeks[n]._cancelDiasCampo=[];
-  if(checked){
-    if(!state.weeks[n]._cancelDiasCampo.includes(key))
-      state.weeks[n]._cancelDiasCampo.push(key);
-  } else {
-    state.weeks[n]._cancelDiasCampo=state.weeks[n]._cancelDiasCampo.filter(k=>k!==key);
-  }
+function setCancelDiasCampo(n, val){
+  // parseia "13, 14, 15" → [13, 14, 15]
+  state.weeks[n]._cancelDiasCampo = val.split(/[,\s]+/)
+    .map(v=>parseInt(v)).filter(v=>!isNaN(v)&&v>=1&&v<=31);
   save();
 }
 
@@ -1446,42 +1442,23 @@ function buildWeekPanel(n){
 
   // Semana de evento especial
   if(w._evento && w._eventoTipo!=='visit'){
-    // Calcula dias de campo desta semana para mostrar checkboxes
-    const month=parseInt(document.getElementById('prog-month')?.value||new Date().getMonth()+1);
-    const year=parseInt(document.getElementById('prog-year')?.value||new Date().getFullYear());
-    const todosDias=getCampoDays(month,year);
-    // Dias que caem nesta semana (semana n = índice 0-4)
-    const semanaIdx=n;
-    const datasemanas=state.weeks.map(wk=>wk.DATA||'');
-    // Filtra dias do mês que pertencem a esta semana via index da semana nas weeks
-    // Identifica os dias de campo que caem entre as datas desta semana
-    const cancelados=w._cancelDiasCampo||[];
-    const diasDaSemana=todosDias.filter(d=>{
-      // associa dia ao índice da semana pelo número do dia no mês
-      const weekOfDay=todosDias.filter(x=>x.day<=d.day).length; // não é preciso, melhor pela data
-      return true; // mostra todos, usuário seleciona
-    });
-
-    const checkboxesCampo = diasDaSemana.length ? `
-      <div style="margin-top:16px;text-align:left;max-width:320px;margin-left:auto;margin-right:auto">
-        <div style="font-size:12px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">Dias de campo sem atividade nesta semana:</div>
-        ${diasDaSemana.map(d=>`
-          <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:6px;cursor:pointer">
-            <input type="checkbox" ${cancelados.includes(d.key)?'checked':''}
-              onchange="toggleCancelDiaCampo(${n},'${d.key}',this.checked)">
-            ${d.day}/${month} ${esc(d.periodo)} ${esc(d.hora)} ${d.pontual?'📅':''}
-          </label>`).join('')}
-      </div>` : '';
-
+    const diasSemCampo = (w._cancelDiasCampo||[]).join(', ');
     return `
     <div style="text-align:center;padding:48px 24px">
       <div style="font-size:32px;margin-bottom:12px">📅</div>
       <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:500;margin-bottom:8px">${esc(w._evento)}</div>
-      <div style="color:var(--muted);font-size:13px;margin-bottom:24px">${esc(w.DATA||'')} — Sem reunião do meio de semana</div>
-      ${checkboxesCampo}
-      <div style="margin-top:20px">
-        <button class="btn ghost sm" onclick="clearEventWeek(${n})">✕ Remover evento desta semana</button>
+      <div style="color:var(--muted);font-size:13px;margin-bottom:20px">${esc(w.DATA||'')} — Sem reunião do meio de semana</div>
+      <div style="max-width:300px;margin:0 auto 20px;text-align:left">
+        <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:6px">
+          Dias do mês sem campo (ex: 13, 14, 15)
+        </label>
+        <input type="text" placeholder="ex: 13, 14, 15"
+          value="${esc(diasSemCampo)}"
+          oninput="setCancelDiasCampo(${n}, this.value)"
+          style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:2px;font-family:inherit;font-size:13px;text-align:center">
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Esses dias aparecem como "sem campo" na aba Campo</div>
       </div>
+      <button class="btn ghost sm" onclick="clearEventWeek(${n})">✕ Remover evento desta semana</button>
     </div>`;
   }
   // Banner informativo para visita do Superintendente (programação normal abaixo)
@@ -3031,15 +3008,15 @@ function renderCampo(){
     </tr></thead>
     <tbody>`;
 
-  // Monta set de dias cancelados por eventos especiais
+  // Monta set de dias do mês cancelados por eventos especiais
   const diasCancelados = new Set();
   state.weeks.forEach(wk=>{
-    (wk._cancelDiasCampo||[]).forEach(k=>diasCancelados.add(k));
+    (wk._cancelDiasCampo||[]).forEach(dia=>diasCancelados.add(dia));
   });
 
   for(const d of days){
     // Dia cancelado por congresso/assembleia
-    if(diasCancelados.has(d.key)){
+    if(diasCancelados.has(d.day)){
       const dowName = DIAS_SEMANA[d.dow];
       h += `<tr style="background:#fff3cd">
         <td style="font-weight:600;text-align:center">${String(d.day).padStart(2,'0')}</td>
