@@ -3192,7 +3192,9 @@ function printCampo(){
   if(!days.length){toast('Nenhuma saída configurada',true);return;}
 
   // Validação: verifica dias sem dirigente
-  const semDirigente=days.filter(d=>!state.campoDesignacoes[d.key]?.dirigente);
+  const diasCanceladosVal=new Set();
+  state.weeks.forEach(wk=>(wk._cancelDiasCampo||[]).forEach(d=>diasCanceladosVal.add(d)));
+  const semDirigente=days.filter(d=>!diasCanceladosVal.has(d.day)&&!state.campoDesignacoes[d.key]?.dirigente);
   if(semDirigente.length>0){
     const lista=semDirigente.map(d=>`Dia ${String(d.day).padStart(2,'0')} — ${DIAS_SEMANA[d.dow]} ${d.periodo}`).join('\n');
     if(!confirm(`⚠ ${semDirigente.length} saída(s) sem dirigente:\n\n${lista}\n\nDeseja imprimir mesmo assim?`)) return;
@@ -3200,8 +3202,21 @@ function printCampo(){
 
   const MESES=['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
+  const diasCancelados=new Set();
+  state.weeks.forEach(wk=>(wk._cancelDiasCampo||[]).forEach(d=>diasCancelados.add(d)));
+
   let rows='';
   for(const d of days){
+    if(diasCancelados.has(d.day)){
+      const isWeekend=d.dow===0||d.dow===6;
+      rows+=`<tr class="${isWeekend?'weekend':''}" style="background:#fff3cd">
+        <td class="col-dia">${String(d.day).padStart(2,'0')}</td>
+        <td class="col-periodo">${DIAS_SEMANA[d.dow]} ${esc(d.periodo)}</td>
+        <td class="col-hora">${esc(d.hora)}</td>
+        <td colspan="2" style="font-style:italic;color:#856404">Sem campo — evento especial</td>
+      </tr>`;
+      continue;
+    }
     const des=state.campoDesignacoes[d.key]||{};
     const pname=des.dirigente?personName(des.dirigente):'—';
     const local=des.local||'—';
