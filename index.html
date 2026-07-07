@@ -933,6 +933,30 @@ table.t tr:hover td{background:#fafaf7}
       <label style="font-size:11px;color:var(--muted)">Dirigentes permitidos neste dia (vazio = todos os habilitados)</label>
       <div id="dia-dirigentes-sel" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;padding:8px;border:1px solid var(--line);border-radius:2px;min-height:36px;background:var(--bg)"></div>
       <div style="font-size:11px;color:var(--muted);margin-top:3px">Clique para abrir o seletor após configurar as pessoas</div>
+
+  <div class="form-row" style="margin-top:16px">
+    <label>Saídas pontuais <span style="font-size:11px;color:var(--muted);font-weight:400">(datas específicas, ex: visita do SC)</span></label>
+    <div id="pontuais-list" style="margin-bottom:8px"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:end;margin-bottom:8px">
+      <div>
+        <label style="font-size:11px;color:var(--muted)">Data</label>
+        <input type="date" id="pontual-data" style="padding:7px 9px;border:1px solid var(--line);font-family:inherit;font-size:13px;border-radius:2px;width:100%">
+      </div>
+      <div>
+        <label style="font-size:11px;color:var(--muted)">Período</label>
+        <select id="pontual-periodo" style="width:100%;padding:7px 9px;border:1px solid var(--line);font-family:inherit;font-size:13px;border-radius:2px">
+          <option value="Manhã">Manhã</option>
+          <option value="Tarde">Tarde</option>
+          <option value="Noite">Noite</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:11px;color:var(--muted)">Horário</label>
+        <input type="text" id="pontual-hora" placeholder="08:15" style="padding:7px 9px;border:1px solid var(--line);font-family:inherit;font-size:13px;border-radius:2px;width:100%">
+      </div>
+      <button class="btn" onclick="addPontual()" style="align-self:end">+</button>
+    </div>
+  </div>
     </div>
   </div>
 
@@ -1091,6 +1115,7 @@ function loadState(){
     if(!s.limpeza) s.limpeza = Array(5).fill(null).map(()=>({grupo:null}));
     if(!s.campoLocais) s.campoLocais=[];
     if(!s.campoDias) s.campoDias=[];
+    if(!s.campoDatasPontuais) s.campoDatasPontuais=[];
     if(!s.campoDesignacoes) s.campoDesignacoes={};
     if(!s.campoHistorico) s.campoHistorico=[];
     if(!s.historico) s.historico=[];  // array de {mes, ano, weeks, label}
@@ -2781,6 +2806,7 @@ const DIAS_SEMANA_ABBR = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 function openCampoConfig(){
   renderLocaisList();
   renderDiasList();
+  renderPontuaisList();
   document.getElementById('campo-config-bg').classList.add('open');
 }
 function closeCampoConfig(){ document.getElementById('campo-config-bg').classList.remove('open'); }
@@ -2833,8 +2859,39 @@ function renderDiasList(){
       <button class="icon-btn danger" onclick="removeDia(${i})">×</button>
     </div>`).join('');
 }
+function addPontual(){
+  const dataVal=document.getElementById('pontual-data').value;
+  if(!dataVal){toast('Selecione uma data',true);return;}
+  const periodo=document.getElementById('pontual-periodo').value;
+  const hora=document.getElementById('pontual-hora').value.trim()||'08:15';
+  if(!state.campoDatasPontuais) state.campoDatasPontuais=[];
+  const key=`${dataVal}-${periodo}`;
+  if(state.campoDatasPontuais.find(p=>p.key===key)){toast('Data já cadastrada',true);return;}
+  state.campoDatasPontuais.push({data:dataVal,periodo,hora,key});
+  state.campoDatasPontuais.sort((a,b)=>a.data>b.data?1:-1);
+  save();renderPontuaisList();
+}
+function removePontual(i){
+  state.campoDatasPontuais.splice(i,1);
+  save();renderPontuaisList();
+}
+function renderPontuaisList(){
+  const el=document.getElementById('pontuais-list');
+  if(!el) return;
+  const pontuais=state.campoDatasPontuais||[];
+  const hoje=new Date().toISOString().slice(0,7); // YYYY-MM
+  const visiveis=pontuais.filter(p=>p.data.slice(0,7)>=hoje);
+  if(!visiveis.length){el.innerHTML='<p style="font-size:12px;color:var(--muted);font-style:italic">Nenhuma saída pontual cadastrada.</p>';return;}
+  el.innerHTML=visiveis.map(p=>{
+    const realIdx=pontuais.indexOf(p);
+    const [y,m,d]=p.data.split('-');
+    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#fafaf7;border:1px solid var(--line);border-radius:2px;margin-bottom:4px;font-size:13px">
+      <span style="flex:1"><strong>📅 ${d}/${m}/${y}</strong> — ${esc(p.periodo)} — ${esc(p.hora)}</span>
+      <button class="icon-btn danger" onclick="removePontual(${realIdx})">×</button>
+    </div>`;
+  }).join('');
+}
 function addDia(){
-  const dia = parseInt(document.getElementById('dia-semana').value);
   const periodo = document.getElementById('dia-periodo').value;
   const hora = document.getElementById('dia-hora').value.trim()||'08:15';
   if(!state.campoDias) state.campoDias=[];
@@ -2844,14 +2901,16 @@ function addDia(){
 }
 function removeDia(i){ state.campoDias.splice(i,1); save(); renderDiasList(); }
 
-// ── Gera os dias do mês com base nos dias recorrentes ──
+// ── Gera os dias do mês com base nos dias recorrentes + pontuais ──
 function getCampoDays(month, year){
   const dias = state.campoDias||[];
-  if(!dias.length) return [];
   const days = [];
   const daysInMonth = new Date(year,month,0).getDate();
+  const mesStr = `${year}-${String(month).padStart(2,'0')}`;
+
+  // Recorrentes
   for(let d=1; d<=daysInMonth; d++){
-    const dow = new Date(year,month-1,d).getDay(); // 0=dom,6=sab
+    const dow = new Date(year,month-1,d).getDay();
     for(const config of dias){
       if(config.dia===dow){
         const key = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}-${config.periodo}`;
@@ -2859,6 +2918,19 @@ function getCampoDays(month, year){
       }
     }
   }
+
+  // Pontuais deste mês
+  for(const p of (state.campoDatasPontuais||[])){
+    if(!p.data.startsWith(mesStr)) continue;
+    const d=parseInt(p.data.split('-')[2]);
+    const dow=new Date(year,month-1,d).getDay();
+    // só adiciona se não há recorrente igual já
+    if(!days.find(x=>x.key===p.key)){
+      days.push({day:d, dow, periodo:p.periodo, hora:p.hora, key:p.key, pontual:true});
+    }
+  }
+
+  days.sort((a,b)=>a.day-b.day||(a.hora>b.hora?1:-1));
   return days;
 }
 
